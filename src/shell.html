@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#edf4f8">
+<title>Soupy Gear Studio</title>
+<style>
+/*{{STYLES}}*/
+</style>
+</head>
+<body>
+<div id="launch-notice" role="status" style="position:fixed;left:16px;right:16px;bottom:16px;z-index:10000;padding:18px 22px;border:2px solid #d78a18;border-radius:12px;background:#fff8e7;color:#17314a;font:15px/1.5 'Segoe UI',sans-serif;box-shadow:0 8px 30px #17314a22">
+  <strong>The interactive editor is not running yet.</strong><br>
+  If this message stays visible, open <strong>START.bat</strong> from the app folder, or open <strong>index.html</strong> with Microsoft Edge or Google Chrome. A file preview can show the layout without running its controls.
+</div>
+<div class="app is-3d">
+<header class="topbar">
+  <div class="brand" aria-label="Soupy Gear Studio">
+    <svg class="brand-mark" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="none" stroke="#087e8b" stroke-width="5" stroke-dasharray="7 3"/><circle cx="22" cy="22" r="9" fill="none" stroke="#7557ca" stroke-width="4"/><circle cx="33" cy="22" r="5" fill="#d78a18" stroke="white" stroke-width="2"/></svg>
+    <span><strong>Soupy</strong><span class="brand-sub">Gear Studio</span></span>
+  </div>
+  <div class="document-title"><label class="sr-only" for="design-name">Design name</label><input id="design-name" value="Motor drive with outboard shaft" maxlength="100" spellcheck="false"><span id="save-status">Your drafting space</span></div>
+  <nav class="file-actions" aria-label="Design actions">
+    <div class="history-actions"><button id="undo" class="icon-button" title="Undo (Ctrl+Z)" aria-label="Undo"><svg viewBox="0 0 24 24"><path d="M8 6 3 11l5 5M3 11h11a6 6 0 0 1 6 6"/></svg></button><button id="redo" class="icon-button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg viewBox="0 0 24 24"><path d="m16 6 5 5-5 5M21 11H10a6 6 0 0 0-6 6"/></svg></button></div>
+    <button id="save" title="Save editable design (Ctrl+S)"><svg viewBox="0 0 24 24"><path d="M5 3h12l4 4v14H3V3h2ZM7 3v6h9V3M7 21v-8h10v8"/></svg><span>Save</span></button>
+    <button id="load" title="Open a saved JSON design"><svg viewBox="0 0 24 24"><path d="M3 8V5h7l2 3h9l-3 12H3V8Z"/></svg><span>Load</span></button>
+    <div class="export-wrap"><button id="export-toggle" class="primary" aria-haspopup="true" aria-expanded="false" aria-controls="export-menu"><svg viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span>Export</span><span class="down-caret">⌄</span></button><div id="export-menu" class="popover" hidden><button data-export="png"><strong>PNG image</strong><small>Share a picture</small></button><button data-export="svg"><strong>SVG drawing</strong><small>Scalable vector artwork</small></button><button data-export="json"><strong>JSON design</strong><small>Keep editing later</small></button></div></div>
+    <button id="help" class="icon-button help-button" title="How to use Gear Studio" aria-label="Help">?</button>
+  </nav>
+  <input type="file" id="file-input" accept="application/json,.json" hidden>
+</header>
+<main class="workspace">
+  <aside class="library" aria-label="Parts and objects">
+    <details class="panel-fold" open><summary><span>Build your mechanism</span><span class="fold-caret" aria-hidden="true">⌄</span></summary>
+      <div class="panel-content">
+        <p class="panel-intro">Add a part, then make it yours.</p>
+        <div class="part-library">
+          <button data-add="motor" class="part-button motor-button"><svg viewBox="0 0 32 32" class="part-icon" aria-hidden="true"><ellipse cx="16" cy="9" rx="13" ry="4"/><path d="M3 9v6m26-6v6M3 15l2 2 2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2V9M8 18v6c0 4 16 4 16 0v-6M8 23c0 4 16 4 16 0"/><ellipse cx="16" cy="9" rx="5" ry="1.5"/></svg><span><strong>Motor + gear cap</strong><small>Flat cap, toothed skirt</small></span><b aria-hidden="true">+</b></button>
+          <button data-add="gear" class="part-button"><svg viewBox="0 0 32 32" class="part-icon" aria-hidden="true"><path d="m13 3 6 0 1 4 3 2 4-1 3 6-3 3v3l2 3-4 5-4-2-3 1-2 4-6-2v-4l-3-3-4 1-2-6 3-3 1-3-2-4 5-3 3 3Z"/><circle cx="16" cy="16" r="5"/></svg><span><strong>Gear</strong><small>External teeth</small></span><b aria-hidden="true">+</b></button>
+          <button data-add="ring" class="part-button"><svg viewBox="0 0 32 32" class="part-icon" aria-hidden="true"><circle cx="16" cy="16" r="13"/><circle cx="16" cy="16" r="9" stroke-dasharray="3 2" stroke-width="3"/></svg><span><strong>Ring</strong><small>Internal or external teeth</small></span><b aria-hidden="true">+</b></button>
+          <button data-add="compound" class="part-button compound-button"><svg viewBox="0 0 32 32" class="part-icon" aria-hidden="true"><circle cx="16" cy="16" r="13" stroke-dasharray="4 2" stroke-width="3"/><circle cx="16" cy="16" r="7" stroke-width="3"/><circle cx="16" cy="16" r="2" fill="currentColor" stroke="none"/></svg><span><strong>Compound pinion</strong><small>Two sections, one shaft</small></span><b aria-hidden="true">+</b></button>
+          <div class="annotation-buttons"><button data-add="arrow" title="Add a direction arrow"><span class="glyph" aria-hidden="true">↗</span>Arrow</button><button data-add="text" title="Add a text label"><span class="glyph text-glyph" aria-hidden="true">T</span>Text</button></div>
+        </div>
+        <div class="objects-heading"><h2>On the canvas</h2><span class="subtle">Select to edit</span></div>
+        <div id="object-list" aria-label="Canvas objects"></div>
+        <div class="new-design-actions"><button id="starter">Load motor layout</button><button id="generator-starter">Load generator layout</button><button id="blank" class="quiet">Start a blank design</button></div><p class="starter-help">Seeing a restored older design? Load either layout for the current arrangement. Undo brings back your previous sketch.</p>
+      </div>
+    </details>
+  </aside>
+  <section class="canvas-column" aria-label="Drawing workspace">
+    <div class="view-controls">
+      <div class="view-mode-switch" role="group" aria-label="View mode">
+        <button data-view-mode="3d" class="active" aria-pressed="true" title="See the mechanism and shaft orientation in 3D"><svg viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Zm0 10 9-5M12 12 3 7m9 5v10"/></svg>3D orientation</button>
+        <button data-view-mode="2d" aria-pressed="false" title="Edit and draw on the flat sketch"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4V4Zm4 12 8-8M8 8h8v8"/></svg>2D sketch</button>
+      </div>
+      <button id="turn-pinion" title="Turn the compound pinion's shaft toward the center of the rings"><svg viewBox="0 0 24 24"><path d="M4 12h15m-5-5 5 5-5 5M4 5v14"/></svg>Point shaft toward rings</button>
+    </div>
+    <div class="operation-bar" aria-label="Operating mode and power flow">
+      <label class="operating-mode-field" for="operating-mode"><span>Operating mode</span><select id="operating-mode"><option value="motor">Motor drive</option><option value="generator">Generator</option></select></label>
+      <div class="power-flow"><strong id="power-flow-title">Motor power flow</strong><p id="power-flow-description">Electrical input → rings → output shaft</p><small>Power flow is separate from rotation direction.</small></div>
+    </div>
+    <div id="camera-controls" aria-label="3D camera controls">
+      <div class="camera-presets" role="group" aria-label="Camera viewpoints"><span class="camera-label">Camera</span><button data-camera="iso" class="active" title="Angled camera view">Angled</button><button data-camera="top" title="Look down at the ring plane">Top</button><button data-camera="front" title="Front camera view">Front</button><button data-camera="side" title="Side camera view">Side</button><button data-camera="under" title="Look up at the motor bodies and downward cap rims">Under caps</button><button data-camera="reset" title="Reset the camera view">Reset</button></div>
+      <div class="camera-sliders">
+        <label class="camera-field" for="camera-yaw"><span>Orbit <output id="camera-yaw-value" for="camera-yaw">−35°</output></span><input type="range" id="camera-yaw" min="-180" max="180" value="-35" aria-label="Camera orbit angle"></label>
+        <label class="camera-field" for="camera-pitch"><span>Tilt <output id="camera-pitch-value" for="camera-pitch">55°</output></span><input type="range" id="camera-pitch" min="-89" max="89" value="55" aria-label="Camera tilt angle"></label>
+        <label class="camera-field" for="camera-roll"><span>Roll <output id="camera-roll-value" for="camera-roll">0°</output></span><input type="range" id="camera-roll" min="-180" max="180" value="0" aria-label="Camera roll angle"></label>
+      </div>
+    </div>
+    <div class="tool-rail">
+      <div class="drawing-tools" role="group" aria-label="Drawing tools">
+        <button data-tool="select" class="active" aria-pressed="true" title="Select and move (V)"><svg viewBox="0 0 24 24"><path d="m5 3 14 9-7 2-3 7-4-18Z"/></svg><span>Select</span></button>
+        <button data-tool="draw" aria-pressed="false" title="Free draw (B)"><svg viewBox="0 0 24 24"><path d="m16 3 5 5-12 12-6 1 1-6L16 3Zm-11 12 5 5M13 6l5 5"/></svg><span>Draw</span></button>
+        <button data-tool="erase" aria-pressed="false" title="Erase drawn strokes (E)"><svg viewBox="0 0 24 24"><path d="m14 3 7 7-11 11H7l-5-5L14 3Zm-8 9 7 7M10 21h12"/></svg><span>Erase</span></button>
+        <button data-tool="pan" aria-pressed="false" title="Pan the canvas (H or hold Space)"><svg viewBox="0 0 24 24"><path d="M8 11V5a2 2 0 0 1 4 0v6-7a2 2 0 0 1 4 0v7-5a2 2 0 0 1 4 0v9c0 4-3 7-7 7-3 0-5-2-7-5l-3-5a2 2 0 0 1 3-2l2 2"/></svg><span>Pan</span></button>
+      </div>
+      <div class="brush-controls" role="group" aria-label="Free drawing settings"><label class="color-control" title="Drawing color"><span class="sr-only">Drawing color</span><input type="color" id="brush-color" value="#d34f68"></label><label class="brush-width" for="brush-size"><span class="sr-only">Brush size</span><input type="range" id="brush-size" min="1" max="30" value="4"><output id="brush-size-value" for="brush-size">4</output><span class="unit">px</span></label></div>
+      <div class="preview-controls"><button id="play" title="Preview illustrative rotation"><svg viewBox="0 0 24 24"><path d="m8 4 12 8-12 8V4Z"/></svg><span>Preview rotation</span></button><button id="grid-toggle" class="icon-button active" title="Toggle grid" aria-label="Toggle grid" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4V4Zm0 5h16M4 15h16M9 4v16M15 4v16"/></svg></button></div>
+    </div>
+    <div id="stage-wrap">
+      <svg id="stage" hidden xmlns="http://www.w3.org/2000/svg" tabindex="0" role="application" aria-label="Interactive gear sketch. Select objects to move and edit; choose Draw to sketch.">
+        <defs><pattern id="grid-pattern" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#cbdce5" stroke-width="0.65"/></pattern></defs>
+        <rect id="grid-bg" width="100%" height="100%" fill="url(#grid-pattern)"/>
+        <g id="world"></g>
+      </svg>
+      <svg id="stage3d" xmlns="http://www.w3.org/2000/svg" tabindex="0" role="application" aria-label="3D mechanism orientation view. Drag to orbit. Shift-drag to pan."></svg>
+      <div class="schematic-badge"><span><i aria-hidden="true"></i>Schematic only</span><small id="schematic-note">Meshing is not validated</small></div>
+      <div class="canvas-bottom"><p id="canvas-hint">Drag to orbit · Shift-drag to pan · Scroll to zoom</p><div class="view-rail" role="group" aria-label="Canvas view"><button id="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><span id="zoom-label">100%</span><button id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button><span class="view-divider"></span><button id="fit" title="Fit design to view (F)">Fit</button></div></div>
+    </div>
+    <div class="canvas-status"><span id="selection-status">Geared-cap motor concept</span><span class="desktop-hint">Scroll to zoom <i>·</i> Space + drag to pan</span><span class="touch-hint">Use Pan to move the view</span></div>
+  </section>
+  <aside class="inspector" aria-label="Selection details">
+    <details class="panel-fold" open><summary><span>Selection</span><span class="fold-caret" aria-hidden="true">⌄</span></summary><div class="panel-content"><div id="properties"><div class="empty-state"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="m10 5 23 15-12 3-4 12L10 5Z"/></svg><h2>Make it your own</h2><p>Select a motor, gear, ring, or pinion to edit its details.</p></div></div></div></details>
+    <details class="panel-fold analysis-fold" id="analysis-fold" open>
+      <summary><span>Mechanism analysis</span><span id="analysis-badge" class="analysis-badge">—</span><span class="fold-caret" aria-hidden="true">⌄</span></summary>
+      <div class="panel-content">
+        <p class="panel-intro">A first-order check of the drawn geometry, the speeds it implies, and the power that follows. It does not design teeth or prove the mechanism works.</p>
+        <div id="analysis"></div>
+      </div>
+    </details>
+    <div class="concept-note"><div class="concept-symbol" aria-hidden="true"><span></span><span></span><span></span></div><h2 id="concept-title">Two motor rings. <br>One outboard output.</h2><div class="engagement-key motor-engagement-key"><p><i class="teal-dot"></i>Upper cap <span>→</span> small pinion top</p><p><i class="inner-dot"></i>Lower cap <span>→</span> large pinion bottom</p></div><p id="concept-description" class="concept-description">The upper cap meets the small pinion top; the lower cap meets the large pinion bottom. Both sections share one shaft outside the motor bodies. Its working end extends outward beyond the small pinion. In motor mode, the counter-rotating rings drive this output shaft.</p><p class="concept-validation">Schematic geometry. Tooth contact, meshing, and clearances are not validated.</p><label class="check-row"><input type="checkbox" id="notes-toggle" checked><span>Show concept annotations</span></label></div>
+  </aside>
+</main>
+</div>
+<div id="toast" role="status" hidden></div>
+<dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-heading"><div><span class="dialog-brand">Soupy Gear Studio</span><h1 id="help-title">See the shaft. Shape the idea.</h1></div><button id="help-close" class="icon-button" aria-label="Close help">×</button></div><div class="help-body"><p>Use <strong>3D orientation</strong> to inspect two frameless motor rings, their geared caps, and the shared shaft from different angles. Use <strong>2D sketch</strong> to arrange parts and draw freely. Both views share the same design.</p><section class="help-power"><h2>Motor or generator</h2><p><strong>Motor drive:</strong> electrical input → rings → output shaft. <strong>Generator:</strong> mechanical input → shaft → rings → electrical output.</p><p>The mode changes the intended power flow, not the chosen spin directions. Generator mode is conceptual; there is no electrical simulation. Driven permanent-magnet machines require suitable power electronics to deliver usable electrical output.</p><p><strong>Load motor layout</strong> or <strong>Load generator layout</strong> replaces a restored older layout with the current arrangement. Undo returns to your previous design.</p></section><div class="help-columns"><section><h2>Build the motor concept</h2><ul><li><strong>Motor + gear cap</strong> adds a frameless motor ring with an oversized flat cap. The cap edge turns downward into a toothed skirt.</li><li>The <strong>higher, larger cap</strong> meets the top of the small pinion section. The <strong>lower, smaller cap</strong> meets the bottom of the large section. These are intended contact locations in the schematic. Both sections share <strong>one shared shaft outside both motor bodies</strong>.</li><li><strong>Point shaft toward rings</strong> changes the shaft heading at its current position. Its two pinion sections stay together on one shaft.</li><li>Select a part to edit its size, teeth, color, and orientation in <strong>Selection</strong>. For a compound pinion, <strong>Shaft extension</strong> adds length beyond the base shaft, and <strong>Working end</strong> chooses the small-gear or large-gear end. The current layouts extend the small-gear end outward by 120 drawing units without moving either gear section.</li><li><strong>Camera</strong> buttons and Orbit, Tilt, and Roll sliders change where you look from. They do not change a part's orientation.</li><li>Drag the 3D view to orbit. Shift-drag to pan. Scroll to zoom, or use the zoom buttons and <strong>Fit</strong>.</li></ul></section><section><h2>Sketch and share</h2><ul><li>In <strong>2D sketch</strong>, drag a part to move it. Use its handles to rotate or resize it.</li><li><strong>Draw</strong> and <strong>Erase</strong> work in 2D. Choose your ink color and brush size. In 3D, your drawing appears on the flat XY sketch plane.</li><li><strong>Preview rotation</strong> animates the chosen directions. Motion is illustrative and does not solve gear meshing.</li><li><strong>Save</strong> keeps an editable JSON file. <strong>Load</strong> opens it again. Export PNG or SVG to share a drawing.</li></ul></section></div><h2>Handy shortcuts</h2><div class="shortcut-grid"><span><kbd>V</kbd> Select in 2D</span><span><kbd>B</kbd> Draw in 2D</span><span><kbd>E</kbd> Erase in 2D</span><span><kbd>H</kbd> Pan in 2D</span><span><kbd>F</kbd> Fit view</span><span><kbd>Delete</kbd> Remove selection</span><span><kbd>Ctrl Z</kbd> Undo</span><span><kbd>Ctrl Shift Z</kbd> Redo</span><span><kbd>Ctrl S</kbd> Save</span></div><p class="help-warning"><strong>Orientation is visible. Gear meshing is not validated.</strong> The 3D view illustrates the intended motor rings, downward toothed cap skirts, and outside compound-shaft arrangement. Tooth profiles, contacts, shaft angles, dimensions, clearances, ratios, forces, and manufacturing readiness still need engineering validation.</p></div></dialog>
+<script>
+//{{CORE}}
+</script>
+<script>
+//{{THREE_D}}
+</script>
+<script>
+//{{MECHANICS}}
+</script>
+<script>
+//{{APP}}
+</script>
+</body>
+</html>
+
+
+
+
+
+

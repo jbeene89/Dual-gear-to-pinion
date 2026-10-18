@@ -1,0 +1,13 @@
+{
+  "name": "soupy-gear-studio",
+  "version": "2.0.0",
+  "description": "Offline sketching workspace and first-order mesh, kinematics, and power analysis for twin-ring motor and generator concepts.",
+  "private": true,
+  "scripts": {
+    "build": "node build.cjs",
+    "test": "node build.cjs && node test/run.cjs",
+    "test:browser": "node build.cjs && node test/browser.cjs",
+    "test:all": "npm test && npm run test:browser"
+  },
+  "license": "MIT"
+}
