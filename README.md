@@ -81,6 +81,27 @@ divides both machines' pole-pair counts, the condition for the zigzag to
 act as a harmonic notch. These settings are stored separately from the
 design, like the duty point.
 
+**Field view.** A third view cuts a meridional section through the
+shared magnet band and computes its magnetic field. Each bar is an ideal
+uniformly magnetized block at its true position around the ring, and the
+field is the closed-form superposition of the blocks' pole-face charges
+— exact for that idealization, and pinned in the test suite against the
+known on-axis value, the dipole far field, and superposition identities.
+Shading shows |B| in the section plane with a tesla legend, field lines
+are traced through it, and two readings report the mean and peak |B|
+sampled around each machine's airgap. Turn the band with the angle
+slider, the step button, or play; set the remanence from 0 to 1.4 T;
+tilt the bars about their tangential axes; click a magnet in the
+section — or choose its number — to flip its polarity. The band's pole
+count follows the analysis panel's upper pole-pair parameter, so the
+two views cannot disagree about the counts. The stators are drawn, not
+modelled: the model is ideal blocks in air, with no iron, no saturation,
+and no eddy currents, so the stators cannot change the field — and
+tilting the bars turns the pattern without steering the split between
+the gaps, whose readings stay near-equal. In the real machine that
+steering is the iron circuit's work, and there is no iron here. Field
+settings are stored separately from the design, like the duty point.
+
 **What a pass means.** Only that the drawing is internally consistent. Tooth
 profile and the right-angle form these faces would need, contact stress,
 backlash, bearing loads, thermal limits, machine envelopes, and electrical
@@ -96,6 +117,7 @@ behaviour are all untouched. The canvas still says **Schematic only**.
 - Motor stator, rotor, and gear cap colors are independent. Rotation preview leaves the stator fixed and turns the rotor and cap together. Resizing the motor body also scales the cap's planar dimensions; cap size can then be adjusted separately.
 - Camera settings and shaft orientation are preserved in saved JSON. PNG/SVG exports use the active view: 3D exports show the camera angle; 2D exports show the sketch.
 - **2D sketch** retains direct part dragging, resize/rotate handles, and freehand drawing. It shows the compound at a single layout center; section spacing and shaft tilt are represented in 3D. Drawn ink is shown on the XY plane in 3D.
+- **Stylus / touch** (in the tool rail) is an optional mode for pen and touch input. It is off by default and remembered per browser. It enlarges the controls and widens the sketch's handle grab targets (18 to 30 px) and the eraser's reach (6 to 20 px); the pointer-input path is identical for mouse, pen, and touch.
 
 Existing JSON files and browser copies still load. Your earlier designs keep their original parts and orientations. If you see an earlier arrangement, click **Load motor layout** or **Load generator layout**. Undo returns to your previous design.
 

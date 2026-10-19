@@ -45,8 +45,8 @@
 #analysis h3:first-child{margin-top:4px}
 .duty-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .duty-field{display:flex;flex-direction:column;gap:3px;font-size:10px;font-weight:650;color:var(--muted);letter-spacing:.01em}
-.duty-field input{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;font:inherit;font-size:12px;font-weight:600;color:var(--ink);background:var(--paper)}
-.duty-field input:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.duty-field input,.duty-field select{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;font:inherit;font-size:12px;font-weight:600;color:var(--ink);background:var(--paper)}
+.duty-field input:focus-visible,.duty-field select:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
 .mesh-card{border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:var(--paper)}
 .mesh-card.muted{background:var(--soft)}
 .mesh-head{display:flex;align-items:center;gap:8px;margin-bottom:3px}
@@ -79,3 +79,39 @@
 .analysis-empty{margin:0 0 8px;font-size:11px;color:var(--muted);line-height:1.5}
 .analysis-limits{margin:16px 0 2px;padding-top:10px;border-top:1px solid var(--line);font-size:10px;line-height:1.55;color:var(--muted)}
 @media(max-width:700px){.duty-grid{grid-template-columns:1fr 1fr 1fr}.mesh-table.power th{max-width:none}}
+
+/* Optional stylus / touch mode (the Stylus / touch toggle in the tool
+   rail): the same layout with larger targets, so a pen tip or fingertip
+   lands where a mouse point would. Off by default; sizes only. */
+.stylus-toggle{margin-right:2px;white-space:nowrap}
+body.stylus-mode button{min-height:48px;padding:10px 14px}
+body.stylus-mode .icon-button{width:48px;height:48px}
+body.stylus-mode .help-button{width:40px;height:40px;min-height:40px}
+body.stylus-mode .popover button{padding:13px 14px}
+body.stylus-mode input,body.stylus-mode select{min-height:48px}
+body.stylus-mode input[type=checkbox]{width:22px;height:22px;min-height:22px}
+body.stylus-mode input[type=range]{min-height:42px}
+body.stylus-mode input[type=range]::-webkit-slider-thumb{width:28px;height:28px}
+body.stylus-mode input[type=range]::-moz-range-thumb{width:28px;height:28px}
+body.stylus-mode .panel-fold>summary{min-height:66px}
+body.stylus-mode .drawing-tools button{min-height:44px;padding:9px 11px}
+body.stylus-mode .view-mode-switch button,body.stylus-mode .camera-presets button{min-height:44px}
+body.stylus-mode .object-item{min-height:56px}
+body.stylus-mode .object-item .object-action{width:40px;min-width:40px;height:40px;min-height:40px}
+body.stylus-mode .swatches button{width:40px;height:40px;min-height:40px;padding:0}
+body.stylus-mode .view-rail button{min-height:44px}
+body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
+
+/* Field view: a meridional section through the shared magnet band, its
+   exact in-air field as shading and traced lines. The controls bar sits
+   where the camera controls sit in 3D, and shows only in field mode. */
+#stagefield{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;background:var(--canvas)}
+#stagefield:focus-visible{outline:2px solid #268ac2;outline-offset:-2px}
+#stagefield [data-magnet]{cursor:pointer}
+#field-controls{display:none}
+.app.is-field #field-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:9px 13px;background:#f8fbfd;border-bottom:1px solid var(--line);flex-shrink:0}
+#field-controls .camera-sliders{display:flex;gap:14px;flex-wrap:wrap}
+.field-readouts{font-size:11px;color:var(--ink);line-height:1.5}
+.field-readouts strong{font-variant-numeric:tabular-nums;white-space:nowrap}
+.field-note{flex-basis:100%;font-size:10px;color:var(--muted);line-height:1.5}
+.app.is-field .canvas-status::after{content:"Field view · Ideal magnets in air";color:var(--muted);white-space:nowrap}

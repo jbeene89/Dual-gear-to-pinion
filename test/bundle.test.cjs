@@ -10,7 +10,7 @@ module.exports = ({ test, assert }) => {
     const built = fs.existsSync(path.join(root, 'index.html'));
     assert.ok(built, 'run `node build.cjs` first');
     const html = read('index.html');
-    for (const marker of ['GearCore', 'Gear3D', 'GearMechanics']) {
+    for (const marker of ['GearCore', 'Gear3D', 'GearMechanics', 'GearField']) {
       assert.ok(html.includes(marker), 'index.html is missing ' + marker);
     }
     assert.ok(!html.includes('{{'), 'an unreplaced build placeholder is left in the output');
@@ -25,7 +25,7 @@ module.exports = ({ test, assert }) => {
   });
 
   test('each module evaluates on its own', () => {
-    for (const file of ['src/core.js', 'src/three-d.js', 'src/mechanics.js']) {
+    for (const file of ['src/core.js', 'src/three-d.js', 'src/mechanics.js', 'src/field.js']) {
       const context = { module: { exports: {} }, globalThis: {} };
       context.globalThis = context;
       assert.doesNotThrow(() => vm.runInNewContext(read(file), context), file);
@@ -40,6 +40,16 @@ module.exports = ({ test, assert }) => {
     const bytes = Buffer.byteLength(read('index.html'));
     assert.ok(bytes > 100000, 'suspiciously small: ' + bytes);
     assert.ok(bytes < 400000, 'the single file is getting heavy: ' + bytes);
+  });
+
+  test('stylus mode is present, optional, and off by default', () => {
+    const html = read('index.html');
+    assert.ok(html.includes('id="stylus-toggle"'), 'the stylus toggle is in the built file');
+    assert.ok(!/id="stylus-toggle"[^>]*\bchecked\b/.test(html), 'the stylus toggle starts unchecked');
+    assert.ok(html.includes('stylus-mode'), 'the stylus-mode class hook is in the built file');
+    assert.ok(html.includes('soupy-gear-studio-ui-v1'), 'the stylus preference has its own store key');
+    assert.ok(html.includes('HANDLE_HIT_PX_STYLUS'), 'the widened grab sizes are wired into the sketch');
+    assert.ok(html.includes('Stylus / touch'), 'the toggle is labeled for stylus/touch use');
   });
 
   test('every bundled example design loads', () => {

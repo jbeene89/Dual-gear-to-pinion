@@ -12,6 +12,7 @@ const parts = {
   '//{{CORE}}': src('core.js'),
   '//{{THREE_D}}': src('three-d.js'),
   '//{{MECHANICS}}': src('mechanics.js'),
+  '//{{FIELD}}': src('field.js'),
   '//{{APP}}': src('app.js')
 };
 

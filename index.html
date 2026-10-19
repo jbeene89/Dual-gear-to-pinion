@@ -53,8 +53,8 @@
 #analysis h3:first-child{margin-top:4px}
 .duty-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .duty-field{display:flex;flex-direction:column;gap:3px;font-size:10px;font-weight:650;color:var(--muted);letter-spacing:.01em}
-.duty-field input{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;font:inherit;font-size:12px;font-weight:600;color:var(--ink);background:var(--paper)}
-.duty-field input:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.duty-field input,.duty-field select{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;font:inherit;font-size:12px;font-weight:600;color:var(--ink);background:var(--paper)}
+.duty-field input:focus-visible,.duty-field select:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
 .mesh-card{border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:var(--paper)}
 .mesh-card.muted{background:var(--soft)}
 .mesh-head{display:flex;align-items:center;gap:8px;margin-bottom:3px}
@@ -87,6 +87,42 @@
 .analysis-empty{margin:0 0 8px;font-size:11px;color:var(--muted);line-height:1.5}
 .analysis-limits{margin:16px 0 2px;padding-top:10px;border-top:1px solid var(--line);font-size:10px;line-height:1.55;color:var(--muted)}
 @media(max-width:700px){.duty-grid{grid-template-columns:1fr 1fr 1fr}.mesh-table.power th{max-width:none}}
+
+/* Optional stylus / touch mode (the Stylus / touch toggle in the tool
+   rail): the same layout with larger targets, so a pen tip or fingertip
+   lands where a mouse point would. Off by default; sizes only. */
+.stylus-toggle{margin-right:2px;white-space:nowrap}
+body.stylus-mode button{min-height:48px;padding:10px 14px}
+body.stylus-mode .icon-button{width:48px;height:48px}
+body.stylus-mode .help-button{width:40px;height:40px;min-height:40px}
+body.stylus-mode .popover button{padding:13px 14px}
+body.stylus-mode input,body.stylus-mode select{min-height:48px}
+body.stylus-mode input[type=checkbox]{width:22px;height:22px;min-height:22px}
+body.stylus-mode input[type=range]{min-height:42px}
+body.stylus-mode input[type=range]::-webkit-slider-thumb{width:28px;height:28px}
+body.stylus-mode input[type=range]::-moz-range-thumb{width:28px;height:28px}
+body.stylus-mode .panel-fold>summary{min-height:66px}
+body.stylus-mode .drawing-tools button{min-height:44px;padding:9px 11px}
+body.stylus-mode .view-mode-switch button,body.stylus-mode .camera-presets button{min-height:44px}
+body.stylus-mode .object-item{min-height:56px}
+body.stylus-mode .object-item .object-action{width:40px;min-width:40px;height:40px;min-height:40px}
+body.stylus-mode .swatches button{width:40px;height:40px;min-height:40px;padding:0}
+body.stylus-mode .view-rail button{min-height:44px}
+body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
+
+/* Field view: a meridional section through the shared magnet band, its
+   exact in-air field as shading and traced lines. The controls bar sits
+   where the camera controls sit in 3D, and shows only in field mode. */
+#stagefield{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;background:var(--canvas)}
+#stagefield:focus-visible{outline:2px solid #268ac2;outline-offset:-2px}
+#stagefield [data-magnet]{cursor:pointer}
+#field-controls{display:none}
+.app.is-field #field-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:9px 13px;background:#f8fbfd;border-bottom:1px solid var(--line);flex-shrink:0}
+#field-controls .camera-sliders{display:flex;gap:14px;flex-wrap:wrap}
+.field-readouts{font-size:11px;color:var(--ink);line-height:1.5}
+.field-readouts strong{font-variant-numeric:tabular-nums;white-space:nowrap}
+.field-note{flex-basis:100%;font-size:10px;color:var(--muted);line-height:1.5}
+.app.is-field .canvas-status::after{content:"Field view · Ideal magnets in air";color:var(--muted);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -133,6 +169,7 @@
       <div class="view-mode-switch" role="group" aria-label="View mode">
         <button data-view-mode="3d" class="active" aria-pressed="true" title="See the mechanism and shaft orientation in 3D"><svg viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Zm0 10 9-5M12 12 3 7m9 5v10"/></svg>3D orientation</button>
         <button data-view-mode="2d" aria-pressed="false" title="Edit and draw on the flat sketch"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4V4Zm4 12 8-8M8 8h8v8"/></svg>2D sketch</button>
+        <button data-view-mode="field" aria-pressed="false" title="See the shared magnet band's field in section, and play with the magnets"><svg viewBox="0 0 24 24"><path d="M4 20c3-6 5-12 8-16 3 4 5 10 8 16M7 20c2-4 3-8 5-11 2 3 3 7 5 11"/></svg>Field view</button>
       </div>
       <button id="turn-pinion" title="Turn the compound pinion's shaft toward the center of the rings"><svg viewBox="0 0 24 24"><path d="M4 12h15m-5-5 5 5-5 5M4 5v14"/></svg>Point shaft toward rings</button>
     </div>
@@ -148,6 +185,18 @@
         <label class="camera-field" for="camera-roll"><span>Roll <output id="camera-roll-value" for="camera-roll">0°</output></span><input type="range" id="camera-roll" min="-180" max="180" value="0" aria-label="Camera roll angle"></label>
       </div>
     </div>
+    <div id="field-controls" aria-label="Magnetic field controls">
+      <div class="camera-presets" role="group" aria-label="Field playback"><span class="camera-label">Field</span><button id="field-play" aria-pressed="false" title="Turn the magnet band">▶ Play</button><button id="field-step" title="Advance the band by one magnet pitch">Step one magnet</button><button id="field-reset-flips" title="Restore the alternating polarity pattern">Alternating</button><button id="field-flip-all" title="Flip every magnet in the band">Flip all</button></div>
+      <div class="camera-sliders">
+        <label class="camera-field" for="field-angle"><span>Rotor angle <output id="field-angle-value" for="field-angle">0°</output></span><input type="range" id="field-angle" min="0" max="360" step="1" value="0" aria-label="Rotor angle"></label>
+        <label class="camera-field" for="field-br"><span>Remanence Br <output id="field-br-value" for="field-br">1.20 T</output></span><input type="range" id="field-br" min="0" max="1.4" step="0.05" value="1.2" aria-label="Remanence in tesla"></label>
+        <label class="camera-field" for="field-tilt"><span>Bar tilt <output id="field-tilt-value" for="field-tilt">0°</output></span><input type="range" id="field-tilt" min="-60" max="60" step="1" value="0" aria-label="Bar tilt in degrees"></label>
+        <label class="camera-field" for="field-magnet"><span>Flip magnet # <output id="field-magnet-value" for="field-magnet">0</output></span><input type="range" id="field-magnet" min="0" max="29" step="1" value="0" aria-label="Magnet index to flip"></label>
+      </div>
+      <button id="field-flip-one" title="Flip the chosen magnet's polarity">Flip it</button>
+      <p class="field-readouts">Airgap |B| midway across each gap, sampled around the band — upper <strong id="field-upper">—</strong> · lower <strong id="field-lower">—</strong> · <span id="field-flip-state"></span></p>
+      <p class="field-note">Ideal uniformly magnetized blocks in air — no iron, no saturation, no eddy currents. Exact for that idealization; the stators are drawn, not modelled.</p>
+    </div>
     <div class="tool-rail">
       <div class="drawing-tools" role="group" aria-label="Drawing tools">
         <button data-tool="select" class="active" aria-pressed="true" title="Select and move (V)"><svg viewBox="0 0 24 24"><path d="m5 3 14 9-7 2-3 7-4-18Z"/></svg><span>Select</span></button>
@@ -156,7 +205,7 @@
         <button data-tool="pan" aria-pressed="false" title="Pan the canvas (H or hold Space)"><svg viewBox="0 0 24 24"><path d="M8 11V5a2 2 0 0 1 4 0v6-7a2 2 0 0 1 4 0v7-5a2 2 0 0 1 4 0v9c0 4-3 7-7 7-3 0-5-2-7-5l-3-5a2 2 0 0 1 3-2l2 2"/></svg><span>Pan</span></button>
       </div>
       <div class="brush-controls" role="group" aria-label="Free drawing settings"><label class="color-control" title="Drawing color"><span class="sr-only">Drawing color</span><input type="color" id="brush-color" value="#d34f68"></label><label class="brush-width" for="brush-size"><span class="sr-only">Brush size</span><input type="range" id="brush-size" min="1" max="30" value="4"><output id="brush-size-value" for="brush-size">4</output><span class="unit">px</span></label></div>
-      <div class="preview-controls"><button id="play" title="Preview illustrative rotation"><svg viewBox="0 0 24 24"><path d="m8 4 12 8-12 8V4Z"/></svg><span>Preview rotation</span></button><button id="grid-toggle" class="icon-button active" title="Toggle grid" aria-label="Toggle grid" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4V4Zm0 5h16M4 15h16M9 4v16M15 4v16"/></svg></button></div>
+      <div class="preview-controls"><label class="check-row stylus-toggle" title="Larger controls and wider grab targets for pen or touch input"><input type="checkbox" id="stylus-toggle"><span>Stylus / touch</span></label><button id="play" title="Preview illustrative rotation"><svg viewBox="0 0 24 24"><path d="m8 4 12 8-12 8V4Z"/></svg><span>Preview rotation</span></button><button id="grid-toggle" class="icon-button active" title="Toggle grid" aria-label="Toggle grid" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4V4Zm0 5h16M4 15h16M9 4v16M15 4v16"/></svg></button></div>
     </div>
     <div id="stage-wrap">
       <svg id="stage" hidden xmlns="http://www.w3.org/2000/svg" tabindex="0" role="application" aria-label="Interactive gear sketch. Select objects to move and edit; choose Draw to sketch.">
@@ -165,6 +214,7 @@
         <g id="world"></g>
       </svg>
       <svg id="stage3d" xmlns="http://www.w3.org/2000/svg" tabindex="0" role="application" aria-label="3D mechanism orientation view. Drag to orbit. Shift-drag to pan."></svg>
+      <svg id="stagefield" hidden xmlns="http://www.w3.org/2000/svg" tabindex="0" role="application" aria-label="Magnetic field section view. Click a magnet in the section to flip its polarity."></svg>
       <div class="schematic-badge"><span><i aria-hidden="true"></i>Schematic only</span><small id="schematic-note">Meshing is not validated</small></div>
       <div class="canvas-bottom"><p id="canvas-hint">Drag to orbit · Shift-drag to pan · Scroll to zoom</p><div class="view-rail" role="group" aria-label="Canvas view"><button id="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><span id="zoom-label">100%</span><button id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button><span class="view-divider"></span><button id="fit" title="Fit design to view (F)">Fit</button></div></div>
     </div>
@@ -184,7 +234,7 @@
 </main>
 </div>
 <div id="toast" role="status" hidden></div>
-<dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-heading"><div><span class="dialog-brand">Soupy Gear Studio</span><h1 id="help-title">See the shaft. Shape the idea.</h1></div><button id="help-close" class="icon-button" aria-label="Close help">×</button></div><div class="help-body"><p>Use <strong>3D orientation</strong> to inspect two frameless motor rings, their geared caps, and the shared shaft from different angles. Use <strong>2D sketch</strong> to arrange parts and draw freely. Both views share the same design.</p><section class="help-power"><h2>Motor or generator</h2><p><strong>Motor drive:</strong> electrical input → rings → output shaft. <strong>Generator:</strong> mechanical input → shaft → rings → electrical output.</p><p>The mode changes the intended power flow, not the chosen spin directions. Generator mode is conceptual; there is no electrical simulation. Driven permanent-magnet machines require suitable power electronics to deliver usable electrical output.</p><p><strong>Load motor layout</strong> or <strong>Load generator layout</strong> replaces a restored older layout with the current arrangement. Undo returns to your previous design.</p></section><div class="help-columns"><section><h2>Build the motor concept</h2><ul><li><strong>Motor + gear cap</strong> adds a frameless motor ring with an oversized flat cap. The cap edge turns downward into a toothed skirt.</li><li>The <strong>higher, larger cap</strong> meets the top of the small pinion section. The <strong>lower, smaller cap</strong> meets the bottom of the large section. These are intended contact locations in the schematic. Both sections share <strong>one shared shaft outside both motor bodies</strong>.</li><li><strong>Point shaft toward rings</strong> changes the shaft heading at its current position. Its two pinion sections stay together on one shaft.</li><li>Select a part to edit its size, teeth, color, and orientation in <strong>Selection</strong>. For a compound pinion, <strong>Shaft extension</strong> adds length beyond the base shaft, and <strong>Working end</strong> chooses the small-gear or large-gear end. The current layouts extend the small-gear end outward by 120 drawing units without moving either gear section.</li><li><strong>Camera</strong> buttons and Orbit, Tilt, and Roll sliders change where you look from. They do not change a part's orientation.</li><li>Drag the 3D view to orbit. Shift-drag to pan. Scroll to zoom, or use the zoom buttons and <strong>Fit</strong>.</li></ul></section><section><h2>Sketch and share</h2><ul><li>In <strong>2D sketch</strong>, drag a part to move it. Use its handles to rotate or resize it.</li><li><strong>Draw</strong> and <strong>Erase</strong> work in 2D. Choose your ink color and brush size. In 3D, your drawing appears on the flat XY sketch plane.</li><li><strong>Preview rotation</strong> animates the chosen directions. Motion is illustrative and does not solve gear meshing.</li><li><strong>Save</strong> keeps an editable JSON file. <strong>Load</strong> opens it again. Export PNG or SVG to share a drawing.</li></ul></section></div><h2>Handy shortcuts</h2><div class="shortcut-grid"><span><kbd>V</kbd> Select in 2D</span><span><kbd>B</kbd> Draw in 2D</span><span><kbd>E</kbd> Erase in 2D</span><span><kbd>H</kbd> Pan in 2D</span><span><kbd>F</kbd> Fit view</span><span><kbd>Delete</kbd> Remove selection</span><span><kbd>Ctrl Z</kbd> Undo</span><span><kbd>Ctrl Shift Z</kbd> Redo</span><span><kbd>Ctrl S</kbd> Save</span></div><p class="help-warning"><strong>Orientation is visible. Gear meshing is not validated.</strong> The 3D view illustrates the intended motor rings, downward toothed cap skirts, and outside compound-shaft arrangement. Tooth profiles, contacts, shaft angles, dimensions, clearances, ratios, forces, and manufacturing readiness still need engineering validation.</p></div></dialog>
+<dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-heading"><div><span class="dialog-brand">Soupy Gear Studio</span><h1 id="help-title">See the shaft. Shape the idea.</h1></div><button id="help-close" class="icon-button" aria-label="Close help">×</button></div><div class="help-body"><p>Use <strong>3D orientation</strong> to inspect two frameless motor rings, their geared caps, and the shared shaft from different angles. Use <strong>2D sketch</strong> to arrange parts and draw freely. Both views share the same design.</p><p><strong>Field view</strong> cuts a section through the shared magnet band of the design plan's Addendum 2 and computes its magnetic field exactly for ideal uniformly magnetized blocks in air — no iron, no saturation, no eddy currents. Turn the band, tilt the bars, change the remanence, or click a magnet in the section to flip it, and watch the field lines and the two airgap readings follow. The stators are drawn, not modelled; in air they change nothing.</p><section class="help-power"><h2>Motor or generator</h2><p><strong>Motor drive:</strong> electrical input → rings → output shaft. <strong>Generator:</strong> mechanical input → shaft → rings → electrical output.</p><p>The mode changes the intended power flow, not the chosen spin directions. Generator mode is conceptual; there is no electrical simulation. Driven permanent-magnet machines require suitable power electronics to deliver usable electrical output.</p><p><strong>Load motor layout</strong> or <strong>Load generator layout</strong> replaces a restored older layout with the current arrangement. Undo returns to your previous design.</p></section><div class="help-columns"><section><h2>Build the motor concept</h2><ul><li><strong>Motor + gear cap</strong> adds a frameless motor ring with an oversized flat cap. The cap edge turns downward into a toothed skirt.</li><li>The <strong>higher, larger cap</strong> meets the top of the small pinion section. The <strong>lower, smaller cap</strong> meets the bottom of the large section. These are intended contact locations in the schematic. Both sections share <strong>one shared shaft outside both motor bodies</strong>.</li><li><strong>Point shaft toward rings</strong> changes the shaft heading at its current position. Its two pinion sections stay together on one shaft.</li><li>Select a part to edit its size, teeth, color, and orientation in <strong>Selection</strong>. For a compound pinion, <strong>Shaft extension</strong> adds length beyond the base shaft, and <strong>Working end</strong> chooses the small-gear or large-gear end. The current layouts extend the small-gear end outward by 120 drawing units without moving either gear section.</li><li><strong>Camera</strong> buttons and Orbit, Tilt, and Roll sliders change where you look from. They do not change a part's orientation.</li><li>Drag the 3D view to orbit. Shift-drag to pan. Scroll to zoom, or use the zoom buttons and <strong>Fit</strong>.</li></ul></section><section><h2>Sketch and share</h2><ul><li>In <strong>2D sketch</strong>, drag a part to move it. Use its handles to rotate or resize it.</li><li><strong>Draw</strong> and <strong>Erase</strong> work in 2D. Choose your ink color and brush size. In 3D, your drawing appears on the flat XY sketch plane.</li><li><strong>Preview rotation</strong> animates the chosen directions. Motion is illustrative and does not solve gear meshing.</li><li><strong>Save</strong> keeps an editable JSON file. <strong>Load</strong> opens it again. Export PNG or SVG to share a drawing.</li></ul></section></div><h2>Handy shortcuts</h2><div class="shortcut-grid"><span><kbd>V</kbd> Select in 2D</span><span><kbd>B</kbd> Draw in 2D</span><span><kbd>E</kbd> Erase in 2D</span><span><kbd>H</kbd> Pan in 2D</span><span><kbd>F</kbd> Fit view</span><span><kbd>Delete</kbd> Remove selection</span><span><kbd>Ctrl Z</kbd> Undo</span><span><kbd>Ctrl Shift Z</kbd> Redo</span><span><kbd>Ctrl S</kbd> Save</span></div><p class="help-warning"><strong>Orientation is visible. Gear meshing is not validated.</strong> The 3D view illustrates the intended motor rings, downward toothed cap skirts, and outside compound-shaft arrangement. Tooth profiles, contacts, shaft angles, dimensions, clearances, ratios, forces, and manufacturing readiness still need engineering validation.</p></div></dialog>
 <script>
 /* Soupy Gear Studio geometry and portable file format. No dependencies.
  * Geometry is schematic: radius is a nominal reference pitch radius. Tooth
@@ -1768,12 +1818,316 @@
 });
 </script>
 <script>
+/* Magnetic field of the shared magnet band, for the Field view.
+ *
+ * Model. Every magnet in the band is a uniformly magnetized rectangular
+ * block (a parallelepiped) sitting at its true circumferential position,
+ * magnetized along its own axial body direction. The field is the exact
+ * closed-form superposition of the blocks in air: each block is replaced
+ * by the magnetic surface charges on its two pole faces (the Coulombian
+ * model), and the field of one uniformly charged rectangle is a corner
+ * sum of log and atan2 terms — the atan2 sum is the rectangle's signed
+ * solid angle. This is the Akoun–Yonnet family of formulas, reduced to
+ * the two charged faces a block magnetized along one body axis carries.
+ * B is mu0 * H outside the blocks and mu0 * (H + M) inside one, so field
+ * lines can be traced through the magnet material as well.
+ *
+ * Idealization, stated plainly: ideal uniformly magnetized blocks in
+ * air. No iron (the stators in the view are drawn, not modelled), no
+ * saturation, no eddy currents, no demagnetization limit checks. Within
+ * that idealization the numbers are exact, not fitted: the test suite
+ * pins the block field against the known on-axis closed form, a dipole
+ * far-field limit, and superposition identities.
+ *
+ * Units: lengths in millimetres, Br in tesla, angles in degrees. The
+ * band's pole-pair count is a parameter here; the app sets it from the
+ * Addendum 2 upper pole-pair parameter so the views cannot disagree.
+ * The seesaw tilt is the bars' literal pivot angle about their
+ * tangential axes, applied to geometry and magnetization together —
+ * the same rotation the closed form already handles, nothing rescaled.
+ */
+(function (root, factory) {
+  'use strict';
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.GearField = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  const MU0 = 4 * Math.PI * 1e-7;
+  const RAD = Math.PI / 180;
+  const num = (v, fallback, low = -1e9, high = 1e9) =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.min(high, Math.max(low, v)) : fallback;
+
+  const FIELD_DEFAULTS = Object.freeze({
+    radius: 320,          // mm, band centre radius — the drawn cap radius
+    polePairs: 15,        // magnets = 2 x pole pairs, alternating polarity
+    magnetRadial: 40,     // mm, radial thickness of one bar
+    magnetAxial: 12,      // mm, axial height of one bar
+    fillFactor: 0.75,     // tangential width as a share of the pole arc
+    airgap: 1.5,          // mm, band face to stator face, each side
+    statorRadial: 56,     // mm, schematic stator radial width (drawn only)
+    statorAxial: 18,      // mm, schematic stator axial thickness (drawn only)
+    br: 1.2,              // T, remanence of the bar material
+    tiltDeg: 0,           // bar pivot angle about the tangential axis
+    angleDeg: 0,          // rotor angle of magnet 0
+    flipped: []           // indices of magnets flipped against the pattern
+  });
+
+  function fieldSettings(raw = {}) {
+    const polePairs = Math.round(num(raw.polePairs, FIELD_DEFAULTS.polePairs, 1, 60));
+    const seen = new Set();
+    const flipped = [];
+    if (Array.isArray(raw.flipped)) {
+      for (const v of raw.flipped) {
+        const i = Math.round(num(v, -1));
+        if (i >= 0 && i < 2 * polePairs && !seen.has(i)) { seen.add(i); flipped.push(i); }
+      }
+      flipped.sort((x, y) => x - y);
+    }
+    const angle = num(raw.angleDeg, FIELD_DEFAULTS.angleDeg);
+    return {
+      radius: num(raw.radius, FIELD_DEFAULTS.radius, 10, 5000),
+      polePairs,
+      magnetRadial: num(raw.magnetRadial, FIELD_DEFAULTS.magnetRadial, 1, 1000),
+      magnetAxial: num(raw.magnetAxial, FIELD_DEFAULTS.magnetAxial, 0.5, 500),
+      fillFactor: num(raw.fillFactor, FIELD_DEFAULTS.fillFactor, 0.05, 1),
+      airgap: num(raw.airgap, FIELD_DEFAULTS.airgap, 0, 100),
+      statorRadial: num(raw.statorRadial, FIELD_DEFAULTS.statorRadial, 1, 2000),
+      statorAxial: num(raw.statorAxial, FIELD_DEFAULTS.statorAxial, 1, 1000),
+      br: num(raw.br, FIELD_DEFAULTS.br, 0, 1.4),
+      tiltDeg: num(raw.tiltDeg, FIELD_DEFAULTS.tiltDeg, -60, 60),
+      angleDeg: Number.isFinite(angle) ? ((angle % 360) + 360) % 360 : 0,
+      flipped
+    };
+  }
+
+  // Tangential width of one bar: the pole arc at the band radius, times
+  // the fill factor. The rest of the arc is the gap between bars.
+  function magnetTangential(s) {
+    return s.fillFactor * (2 * Math.PI * s.radius) / (2 * s.polePairs);
+  }
+
+  /* H (A/m) of one uniformly charged rectangle lying in the plane z = zf,
+   * spanning x in [-a, a] and y in [-b, b], charge density sigma (A/m).
+   * Corner sums over the four corners; the rational terms that appear in
+   * the gradient of the sheet potential cancel pairwise in the sums,
+   * leaving the log terms for the tangential components and the solid
+   * angle for the normal one. Signs verified against quadrature of the
+   * defining integral and the on-axis closed form.
+   */
+  function rectH(px, py, pz, a, b, zf, sigma) {
+    let sx = 0, sy = 0, sz = 0;
+    for (let i = 0; i < 2; i++) {
+      const U = px - (i ? a : -a);
+      for (let j = 0; j < 2; j++) {
+        const V = py - (j ? b : -b);
+        const W = pz - zf;
+        const R = Math.hypot(U, V, W);
+        const w = ((i + j) % 2 === 0) ? 1 : -1;
+        sx += w * Math.log(Math.max(V + R, 1e-300));
+        sy += w * Math.log(Math.max(U + R, 1e-300));
+        sz += w * Math.atan2(U * V, W * R);
+      }
+    }
+    const k = sigma / (4 * Math.PI);
+    return [-k * sx, -k * sy, k * sz];
+  }
+
+  /* B (tesla) of one block centred on the origin of its body frame,
+   * half sizes [radial, tangential, axial], magnetized along body z
+   * with sign +1 (north up) or -1, remanence br. The pole faces are the
+   * z = +/-axial faces, carrying charges +/- sign * M.
+   */
+  function blockB(p, half, sign, br) {
+    const M = br / MU0;
+    const top = rectH(p[0], p[1], p[2], half[0], half[1], half[2], sign * M);
+    const bottom = rectH(p[0], p[1], p[2], half[0], half[1], -half[2], -sign * M);
+    const B = [MU0 * (top[0] + bottom[0]), MU0 * (top[1] + bottom[1]), MU0 * (top[2] + bottom[2])];
+    if (Math.abs(p[0]) <= half[0] && Math.abs(p[1]) <= half[1] && Math.abs(p[2]) <= half[2]) {
+      B[2] += sign * br;   // inside the material, B = mu0 (H + M)
+    }
+    return B;
+  }
+
+  /* The band as placed blocks: centres on the circle, body frames from
+   * the rotor angle and the shared tilt. The frame is Q = Rz(phi) then a
+   * pivot about the tangential axis, so a tilted bar's magnetization
+   * tips in the radial-axial plane, toward radial for positive tilt.
+   * Polarity alternates around the ring; `flipped` indices run against
+   * the pattern.
+   */
+  function bandMagnets(raw) {
+    const s = fieldSettings(raw);
+    const n = 2 * s.polePairs;
+    const tilt = s.tiltDeg * RAD, ct = Math.cos(tilt), st = Math.sin(tilt);
+    const flipped = new Set(s.flipped);
+    const magnets = [];
+    for (let k = 0; k < n; k++) {
+      const phi = s.angleDeg * RAD + k * (2 * Math.PI / n);
+      const cf = Math.cos(phi), sf = Math.sin(phi);
+      magnets.push({
+        index: k,
+        angle: phi,
+        center: [s.radius * cf, s.radius * sf, 0],
+        axes: [
+          [ct * cf, ct * sf, -st],      // body x: radial, tipped by the pivot
+          [-sf, cf, 0],                 // body y: tangential
+          [st * cf, st * sf, ct]        // body z: axial, tipped by the pivot
+        ],
+        sign: (k % 2 === 0 ? 1 : -1) * (flipped.has(k) ? -1 : 1)
+      });
+    }
+    return magnets;
+  }
+
+  // Total B at a world point, summed over the placed blocks.
+  function fieldAt(p, raw, magnets) {
+    const s = fieldSettings(raw);
+    const list = magnets || bandMagnets(s);
+    const half = [s.magnetRadial / 2, magnetTangential(s) / 2, s.magnetAxial / 2];
+    const B = [0, 0, 0];
+    for (const m of list) {
+      const dx = p[0] - m.center[0], dy = p[1] - m.center[1], dz = p[2] - m.center[2];
+      const local = [
+        dx * m.axes[0][0] + dy * m.axes[0][1] + dz * m.axes[0][2],
+        dx * m.axes[1][0] + dy * m.axes[1][1] + dz * m.axes[1][2],
+        dx * m.axes[2][0] + dy * m.axes[2][1] + dz * m.axes[2][2]
+      ];
+      const bl = blockB(local, half, m.sign, s.br);
+      B[0] += m.axes[0][0] * bl[0] + m.axes[1][0] * bl[1] + m.axes[2][0] * bl[2];
+      B[1] += m.axes[0][1] * bl[0] + m.axes[1][1] * bl[1] + m.axes[2][1] * bl[2];
+      B[2] += m.axes[0][2] * bl[0] + m.axes[1][2] * bl[1] + m.axes[2][2] * bl[2];
+    }
+    return B;
+  }
+
+  // Is a world point inside any placed block? Tilted bars swing their
+  // corners through the zero-tilt gap planes, so the airgap sample has
+  // to ask — a point inside magnet material is not an airgap point.
+  function insideAnyBlock(p, raw, magnets) {
+    const s = fieldSettings(raw);
+    const list = magnets || bandMagnets(s);
+    const half = [s.magnetRadial / 2, magnetTangential(s) / 2, s.magnetAxial / 2];
+    for (const m of list) {
+      const dx = p[0] - m.center[0], dy = p[1] - m.center[1], dz = p[2] - m.center[2];
+      if (Math.abs(dx * m.axes[0][0] + dy * m.axes[0][1] + dz * m.axes[0][2]) <= half[0]
+        && Math.abs(dx * m.axes[1][0] + dy * m.axes[1][1] + dz * m.axes[1][2]) <= half[1]
+        && Math.abs(dx * m.axes[2][0] + dy * m.axes[2][1] + dz * m.axes[2][2]) <= half[2]) return true;
+    }
+    return false;
+  }
+
+  // Mean and peak |B| on the circle at the band radius, midway across
+  // the airgap on one side (side +1 upper, -1 lower). This is the sample
+  // the Field view reports for each machine's gap. Samples that fall
+  // inside a tilted bar are excluded and counted, not silently read as
+  // airgap field.
+  function sampleAirgap(raw, magnets, side, count = 120) {
+    const s = fieldSettings(raw);
+    const list = magnets || bandMagnets(s);
+    const z = (side < 0 ? -1 : 1) * (s.magnetAxial / 2 + s.airgap / 2);
+    let sum = 0, peak = 0, used = 0, inside = 0;
+    for (let j = 0; j < count; j++) {
+      const t = j * (2 * Math.PI / count);
+      const p = [s.radius * Math.cos(t), s.radius * Math.sin(t), z];
+      if (insideAnyBlock(p, s, list)) { inside++; continue; }
+      const B = fieldAt(p, s, list);
+      const m = Math.hypot(B[0], B[1], B[2]);
+      sum += m; if (m > peak) peak = m;
+      used++;
+    }
+    return { mean: used ? sum / used : 0, peak, samples: used, inside };
+  }
+
+  // The section region: wide enough to hold both stator sections and a
+  // margin of the fringing field around them.
+  function sectionRegion(raw) {
+    const s = fieldSettings(raw);
+    return {
+      halfW: s.radius + s.magnetRadial / 2 + 34,
+      halfH: s.magnetAxial / 2 + s.airgap + s.statorAxial + 14
+    };
+  }
+
+  // |B| on the section plane y = 0 over the region, as a grid of cell
+  // centres, row 0 at the top (+z). Values in tesla.
+  function sectionGrid(raw, magnets, nx, nz) {
+    const s = fieldSettings(raw);
+    const list = magnets || bandMagnets(s);
+    const region = sectionRegion(s);
+    const dx = 2 * region.halfW / nx, dz = 2 * region.halfH / nz;
+    const values = new Array(nx * nz);
+    let max = 0;
+    for (let j = 0; j < nz; j++) {
+      const z = region.halfH - (j + 0.5) * dz;
+      for (let i = 0; i < nx; i++) {
+        const x = -region.halfW + (i + 0.5) * dx;
+        const B = fieldAt([x, 0, z], s, list);
+        const m = Math.hypot(B[0], B[1], B[2]);
+        values[j * nx + i] = m;
+        if (m > max) max = m;
+      }
+    }
+    return { nx, nz, dx, dz, halfW: region.halfW, halfH: region.halfH, values, max };
+  }
+
+  /* One field line in the section plane, traced both ways from a seed
+   * [x, z] with a midpoint (RK2) integrator on the in-plane components.
+   * The line stops at the region edge, at a null, after maxSteps, or
+   * after a run of steps in field too weak to follow (the bore and the
+   * far outside, where a line would otherwise wander the whole step
+   * budget). Brief weak crossings — the saddles between poles — are
+   * ridden through.
+   */
+  function streamline(raw, magnets, seed, opts = {}) {
+    const s = fieldSettings(raw);
+    const list = magnets || bandMagnets(s);
+    const region = sectionRegion(s);
+    const step = num(opts.step, 1.5, 0.05, 100);
+    const maxSteps = Math.round(num(opts.maxSteps, 240, 1, 100000));
+    const weak = num(opts.weak, 0.003, 0, 100);
+    const bound = { x: region.halfW * 1.03, z: region.halfH * 1.03 };
+    const slope = (x, z) => {
+      const B = fieldAt([x, 0, z], s, list);
+      const m = Math.hypot(B[0], B[2]);
+      return m > 1e-9 ? [B[0] / m, B[2] / m, m] : null;
+    };
+    const trace = dir => {
+      const pts = [];
+      let x = seed[0], z = seed[1], weakRun = 0;
+      for (let i = 0; i < maxSteps; i++) {
+        const d0 = slope(x, z);
+        if (!d0) break;
+        const mx = x + dir * d0[0] * step / 2, mz = z + dir * d0[1] * step / 2;
+        const dm = slope(mx, mz);
+        if (!dm) break;
+        x += dir * dm[0] * step; z += dir * dm[1] * step;
+        if (Math.abs(x) > bound.x || Math.abs(z) > bound.z) break;
+        weakRun = dm[2] < weak ? weakRun + 1 : 0;
+        if (weakRun > 10) break;
+        pts.push([x, z]);
+        // A line that comes home has closed its loop around a pole;
+        // tracing on would only draw over itself.
+        if (pts.length > 20 && Math.hypot(x - seed[0], z - seed[1]) < step * 0.8) break;
+      }
+      return pts;
+    };
+    const back = trace(-1).reverse();
+    return back.concat([[seed[0], seed[1]]], trace(1));
+  }
+
+  return { MU0, FIELD_DEFAULTS, fieldSettings, magnetTangential, bandMagnets,
+    blockB, fieldAt, insideAnyBlock, sampleAirgap, sectionRegion, sectionGrid, streamline };
+});
+</script>
+<script>
 (() => {
   'use strict';
   const C = window.GearCore;
   const $ = id => document.getElementById(id);
   const stage = $('stage'), world = $('world');
   const stage3d = $('stage3d'), G = window.Gear3D, M = window.GearMechanics;
+  const stageField = $('stagefield'), F = window.GearField;
   const clone = value => JSON.parse(JSON.stringify(value));
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -1786,6 +2140,23 @@
   // settings under their own key, for the same reason: they describe how
   // the modelled transmission is set, not the design file.
   const ADD2_STORE = 'soupy-gear-studio-add2-v1';
+  // Interface preferences — currently just the stylus / touch mode — are
+  // chrome, not design or model state, so they get their own key as well.
+  const UI_STORE = 'soupy-gear-studio-ui-v1';
+  // Screen-space grab sizes for the 2D sketch. GearCore draws invisible
+  // discs of radius HANDLE_HIT_PX around the resize and rotate handles
+  // (divided by zoom, so the size is constant on screen), and the eraser
+  // reaches ERASE_REACH_PX beyond the pointer. Stylus mode widens both:
+  // a pen tip or a fingertip is a blunter instrument than a mouse point.
+  const HANDLE_HIT_PX = 18, HANDLE_HIT_PX_STYLUS = 30;
+  const ERASE_REACH_PX = 6, ERASE_REACH_PX_STYLUS = 20;
+  let stylusMode = false;
+  try { stylusMode = JSON.parse(localStorage.getItem(UI_STORE))?.stylus === true; } catch (error) { stylusMode = false; }
+  function applyStylusMode() {
+    document.body.classList.toggle('stylus-mode', stylusMode);
+    $('stylus-toggle').checked = stylusMode;
+  }
+  applyStylusMode();
   let design = C.starterMotorDrive(), selectedId = null, tool = 'select', viewMode = '3d';
   let past = [], future = [], gesture = null, space = false;
   let view = {x:0, y:0, zoom:1}, playing = false, playStart = 0, frame = 0;
@@ -1794,6 +2165,13 @@
   try { const raw = localStorage.getItem(DUTY_STORE); if (raw) duty = M.settings(JSON.parse(raw)); } catch (error) { duty = Object.assign({}, M.DEFAULTS); }
   let add2 = Object.assign({}, M.ADD2_DEFAULTS);
   try { const raw = localStorage.getItem(ADD2_STORE); if (raw) add2 = M.add2Settings(JSON.parse(raw)); } catch (error) { add2 = Object.assign({}, M.ADD2_DEFAULTS); }
+  // Field view state — the magnet band's geometry, remanence, tilt,
+  // rotor angle, and which magnets run flipped — is play state, not
+  // design state, so it sits beside the file under its own key too.
+  const FIELD_STORE = 'soupy-gear-studio-field-v1';
+  let fieldState = Object.assign({}, F.FIELD_DEFAULTS);
+  try { const raw = localStorage.getItem(FIELD_STORE); if (raw) fieldState = F.fieldSettings(JSON.parse(raw)); } catch (error) { fieldState = Object.assign({}, F.FIELD_DEFAULTS); }
+  let fieldPlaying = false, fieldFrame = 0, fieldLast = 0, fieldSlowFrames = 0, fieldSkipLines = false;
   const pointers = new Map();
   let recoveryMessage = '';
   try {
@@ -1854,6 +2232,7 @@
     view = {x:p.x-at.x*z,y:p.y-at.y*z,zoom:z}; renderScene();
   }
   function fit() {
+    if(viewMode==='field') {renderField();return;}
     if(viewMode==='3d') {Object.assign(camera(),{zoom:1,panX:0,panY:0});renderScene();persist();return;}
     const b = C.bounds(design,{compactNotes:stage.clientWidth<600}), rect = stage.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
@@ -1869,6 +2248,7 @@
     $('zoom-label').textContent = `${Math.round(view.zoom*100)}%`;
   }
   function renderScene(time) {
+    if (viewMode==='field') { renderField(); return; }
     const angles = {};
     if (playing) for (const o of design.objects) {
       const sign = o.direction === 'ccw' ? -1 : o.direction === 'cw' ? 1 : 0;
@@ -1879,7 +2259,7 @@
       stage3d.setAttribute('viewBox',`0 0 ${Math.max(1,rect.width)} ${Math.max(1,rect.height)}`);
       stage3d.innerHTML=G.render(design,camera(),{width:Math.max(1,rect.width),height:Math.max(1,rect.height),selectedId,angles,grid:$('grid-bg').style.display!=='none',bottomPadding:rect.width<600?110:75,gizmo:rect.width>=600,overlayText:false});
       syncCameraControls();
-    } else world.innerHTML = C.sceneMarkup(design,{selectedId:playing ? null : selectedId,angles,exporting:false,compactNotes:stage.clientWidth<600,handleScale:1/view.zoom});
+    } else world.innerHTML = C.sceneMarkup(design,{selectedId:playing ? null : selectedId,angles,exporting:false,compactNotes:stage.clientWidth<600,handleScale:(stylusMode?HANDLE_HIT_PX_STYLUS/HANDLE_HIT_PX:1)/view.zoom});
     renderView();
   }
   const typeName = {gear:'Gear',ring:'Ring',motor:'Frameless motor + gear cap',compound:'Compound pinion',arrow:'Direction arrow',text:'Text label'};
@@ -1953,7 +2333,8 @@
     else { badge.textContent = 'consistent'; badge.className = 'analysis-badge good'; }
     // The canvas badge keeps saying "Schematic only"; only its note changes,
     // so a passing check never reads as a validated mechanism.
-    $('schematic-note').textContent = !live.length ? 'Meshing is not validated'
+    $('schematic-note').textContent = viewMode==='field' ? 'Ideal magnets in air · no iron'
+      : !live.length ? 'Meshing is not validated'
       : report.blocking ? report.blocking + (report.blocking === 1 ? ' mesh will not turn' : ' meshes will not turn')
       : 'Sizes and teeth agree · profiles still unvalidated';
 
@@ -2127,9 +2508,12 @@
   }
   function setViewMode(mode) {
     if(gesture)finishGesture();
-    stopPreview();viewMode=mode;
-    document.querySelector('.app').classList.toggle('is-3d',mode==='3d');
-    stage.hidden=mode==='3d';stage3d.hidden=mode!=='3d';$('camera-controls').hidden=mode!=='3d';
+    stopPreview();stopFieldPlay(false);viewMode=mode;
+    const app=document.querySelector('.app');
+    app.classList.toggle('is-3d',mode==='3d');
+    app.classList.toggle('is-field',mode==='field');
+    stage.hidden=mode!=='2d';stage3d.hidden=mode!=='3d';stageField.hidden=mode!=='field';
+    $('camera-controls').hidden=mode!=='3d';
     document.querySelectorAll('[data-view-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.viewMode===mode);b.setAttribute('aria-pressed',b.dataset.viewMode===mode);});
     setTool(tool);render();
     if(mode==='2d')fit();
@@ -2213,7 +2597,7 @@
     document.querySelectorAll('[data-tool]').forEach(b => { b.classList.toggle('active',b.dataset.tool===tool); b.setAttribute('aria-pressed',b.dataset.tool===tool); });
     stage.style.cursor = tool==='pan'?'grab':tool==='draw'?'crosshair':tool==='erase'?'cell':'default';
     const hints = {select:'Drag to move · Square handle resizes · Round handle rotates',draw:'Draw with your mouse, pen, or finger · Two fingers pan & zoom',erase:'Drag across ink to erase whole strokes · Undo restores them',pan:'Drag the drawing surface · Scroll or pinch to zoom'};
-    $('canvas-hint').textContent = viewMode==='3d'?'Drag to orbit · Shift-drag to pan · Scroll to zoom · Click a part to edit':hints[tool];
+    $('canvas-hint').textContent = viewMode==='3d'?'Drag to orbit · Shift-drag to pan · Scroll to zoom · Click a part to edit':viewMode==='field'?'A section through the shared magnet band · Click a magnet in the section to flip it':hints[tool];
   }
   function stopPreview() {
     if (!playing) return;
@@ -2229,12 +2613,12 @@
   });
   function add(type) {
     if (design.objects.length>=200) { toast('This design has reached its 200-part limit. Save it and start another design.'); return; }
-    const rect = stage.getBoundingClientRect(), p = viewMode==='3d'?{x:0,y:0}:boundedPoint(toWorld({x:rect.width/2,y:rect.height/2}));
+    const rect = stage.getBoundingClientRect(), p = viewMode!=='2d'?{x:0,y:0}:boundedPoint(toWorld({x:rect.width/2,y:rect.height/2}));
     mutate(() => { const o=C.createObject(type,p.x,p.y); if(type==='motor'&&isGenerator())o.name='Frameless generator + cap'; design.objects.push(o); selectedId=o.id; });
     setTool('select');
   }
   document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>add(b.dataset.add)));
-  document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{if(viewMode==='3d')setViewMode('2d');setTool(b.dataset.tool);}));
+  document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{if(viewMode!=='2d')setViewMode('2d');setTool(b.dataset.tool);}));
   $('object-list').addEventListener('click',e=>{const b=e.target.closest('[data-select]'); if(b) { setTool('select'); select(b.dataset.select); }});
   function constrainMotor(o) {
     o.motorBand=clamp(o.motorBand,4,o.radius*.8);
@@ -2325,7 +2709,7 @@
     return Math.hypot(p.x-a[0]-t*dx,p.y-a[1]-t*dy);
   }
   function eraseAt(p) {
-    const reach=Math.max(6,Number($('brush-size').value))/view.zoom;
+    const reach=Math.max(stylusMode?ERASE_REACH_PX_STYLUS:ERASE_REACH_PX,Number($('brush-size').value))/view.zoom;
     design.strokes=design.strokes.filter(s=>{
       if(s.points.length===1) return Math.hypot(p.x-s.points[0][0],p.y-s.points[0][1])>reach+s.width/2;
       return !s.points.some((v,i)=>i>0&&segmentDistance(p,s.points[i-1],v)<=reach+s.width/2);
@@ -2417,12 +2801,17 @@
   stage.addEventListener('lostpointercapture',e=>{if(pointers.has(e.pointerId)){pointers.delete(e.pointerId);finishGesture();}});
   stage.addEventListener('wheel',e=>{e.preventDefault();zoomAt(Math.exp(-clamp(e.deltaY,-150,150)*.002),localPoint(e));},{passive:false});
   stage.addEventListener('contextmenu',e=>e.preventDefault());
-  $('zoom-in').addEventListener('click',()=>viewMode==='3d'?zoomCamera(1.2):zoomAt(1.2,{x:stage.clientWidth/2,y:stage.clientHeight/2}));
-  $('zoom-out').addEventListener('click',()=>viewMode==='3d'?zoomCamera(1/1.2):zoomAt(1/1.2,{x:stage.clientWidth/2,y:stage.clientHeight/2}));
+  $('zoom-in').addEventListener('click',()=>viewMode==='field'?renderField():viewMode==='3d'?zoomCamera(1.2):zoomAt(1.2,{x:stage.clientWidth/2,y:stage.clientHeight/2}));
+  $('zoom-out').addEventListener('click',()=>viewMode==='field'?renderField():viewMode==='3d'?zoomCamera(1/1.2):zoomAt(1/1.2,{x:stage.clientWidth/2,y:stage.clientHeight/2}));
   $('fit').addEventListener('click',fit);
   $('grid-toggle').addEventListener('click',()=>{const b=$('grid-bg');const hidden=b.style.display==='none';b.style.display=hidden?'':'none';$('grid-toggle').setAttribute('aria-pressed',hidden);$('grid-toggle').classList.toggle('active',hidden);if(viewMode==='3d')renderScene();});
   $('brush-size').addEventListener('input',()=>{$('brush-size-value').textContent=$('brush-size').value;});
   $('notes-toggle').addEventListener('change',()=>mutate(()=>{design.notes=$('notes-toggle').checked;}));
+  $('stylus-toggle').addEventListener('change',()=>{
+    stylusMode = $('stylus-toggle').checked;
+    try { localStorage.setItem(UI_STORE,JSON.stringify({stylus:stylusMode})); } catch (error) { /* a browser copy is best effort */ }
+    applyStylusMode(); renderScene();
+  });
   $('design-name').addEventListener('change',()=>mutate(()=>{design.name=$('design-name').value.trim().slice(0,100)||'Untitled mechanism';}));
   $('undo').addEventListener('click',undo); $('redo').addEventListener('click',redo);
   function loadDriveStarter(generator) {
@@ -2492,7 +2881,7 @@
     if(e.code==='Space') {if(e.target.closest('button,a,summary'))return;e.preventDefault();space=true;stage.style.cursor='grab';return;}
     if(mod||e.altKey) return;
     const shortcuts={v:'select',b:'draw',e:'erase',h:'pan'};
-    if(shortcuts[key]){if(viewMode==='3d')setViewMode('2d');setTool(shortcuts[key]);}
+    if(shortcuts[key]){if(viewMode!=='2d')setViewMode('2d');setTool(shortcuts[key]);}
     if(key==='f')fit();
     if(key==='delete'||key==='backspace') {e.preventDefault();partAction('remove');}
     if(key==='escape') {finishGesture(true);stopPreview();selectedId=null;setTool('select');render();}
@@ -2504,11 +2893,192 @@
   document.addEventListener('keyup',e=>{if(e.code==='Space'){space=false;setTool(tool);}});
   window.addEventListener('blur',()=>{space=false;pointers.clear();cameraPointers.clear();cameraGesture=null;finishGesture();});
   window.addEventListener('pagehide',()=>{try{localStorage.setItem(STORE,snapshot());}catch(error){/* Save JSON remains available. */}});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)stopPreview();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){stopPreview();stopFieldPlay();}});
   const refreshSize=()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(renderScene,80);};
   if(typeof ResizeObserver==='function')new ResizeObserver(refreshSize).observe($('stage-wrap'));
   else window.addEventListener('resize',refreshSize);
   if(matchMedia('(max-width:700px)').matches)document.querySelector('.library details')?.removeAttribute('open');
+  /* ---- Field view -----------------------------------------------------
+   * A meridional section through the shared magnet band. GearField's
+   * closed-form superposition does the physics — exact for ideal blocks
+   * in air — and this section only draws it: |B| shading, traced field
+   * lines, the two magnets the plane cuts, and schematic stators that
+   * are rectangles and labels, because with no iron in the model they
+   * cannot change the field. The view says so, in its own bar.
+   */
+  function fieldNow() {
+    // The band's pole count follows the Addendum 2 upper pole-pair
+    // parameter, so the section and the analysis panel cannot disagree
+    // about the counts the treaty is written in.
+    return F.fieldSettings(Object.assign({}, fieldState, { polePairs: add2.polePairsUpper }));
+  }
+  function persistField() {
+    try { localStorage.setItem(FIELD_STORE, JSON.stringify(fieldState)); } catch (error) { /* a browser copy is best effort */ }
+  }
+  const FIELD_STOPS = [[0, '#edf4f8'], [0.18, '#cfe3ee'], [0.38, '#9cc3d4'], [0.55, '#5da9bd'], [0.7, '#087e8b'], [0.85, '#d78a18'], [1, '#b23c17']];
+  function fieldColor(t) {
+    const x = clamp(t, 0, 1) * (FIELD_STOPS.length - 1);
+    const i = Math.min(FIELD_STOPS.length - 2, Math.floor(x)), f = x - i;
+    const ch = (c, k) => parseInt(c.slice(1 + 2 * k, 3 + 2 * k), 16);
+    const mix = k => Math.round(ch(FIELD_STOPS[i][1], k) + (ch(FIELD_STOPS[i + 1][1], k) - ch(FIELD_STOPS[i][1], k)) * f);
+    return `rgb(${mix(0)},${mix(1)},${mix(2)})`;
+  }
+  function renderField(quality) {
+    const rect = stageField.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return;   // hidden: nothing to draw into yet
+    const W = Math.max(1, rect.width), H = Math.max(1, rect.height);
+    stageField.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const s = fieldNow();
+    const magnets = F.bandMagnets(s);
+    const region = F.sectionRegion(s);
+    const scale = Math.min(W / (2 * region.halfW), H / (2 * region.halfH));
+    const X = v => W / 2 + v * scale, Y = v => H / 2 - v * scale;
+    const draft = quality === 'draft';
+    const grid = F.sectionGrid(s, magnets, draft ? 40 : 88, draft ? 22 : 50);
+    const parts = [];
+    parts.push(`<defs><linearGradient id="field-legend" x1="0" y1="0" x2="1" y2="0">${FIELD_STOPS.map(([o, c]) => `<stop offset="${o * 100}%" stop-color="${c}"/>`).join('')}</linearGradient></defs>`);
+    const inv = grid.max > 0 ? 1 / grid.max : 0;
+    for (let j = 0; j < grid.nz; j++) {
+      const yTop = Y(grid.halfH - j * grid.dz);
+      for (let i = 0; i < grid.nx; i++) {
+        const v = grid.values[j * grid.nx + i] * inv;
+        if (v < 0.02) continue;
+        parts.push(`<rect x="${X(-grid.halfW + i * grid.dx).toFixed(1)}" y="${yTop.toFixed(1)}" width="${(grid.dx * scale + 0.6).toFixed(1)}" height="${(grid.dz * scale + 0.6).toFixed(1)}" fill="${fieldColor(v)}"/>`);
+      }
+    }
+    const R = s.radius, a2 = s.magnetRadial / 2, c2 = s.magnetAxial / 2;
+    const seeds = [];
+    for (const sx of [1, -1]) {
+      for (const fx of [-0.45, 0, 0.45]) for (const fz of [1, -1]) seeds.push([sx * (R + fx * s.magnetRadial), fz * (c2 + Math.max(1.2, s.airgap * 0.8))]);
+      seeds.push([sx * (R - a2 - 1.5), 0]);
+    }
+    const lineSet = draft ? (fieldSkipLines ? [] : seeds.filter((_, i) => i % 2 === 0)) : seeds;
+    for (const seed of lineSet) {
+      const pts = F.streamline(s, magnets, seed, draft ? { step: 2.2, maxSteps: 130 } : {});
+      if (pts.length < 3) continue;
+      parts.push(`<polyline points="${pts.map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ')}" fill="none" stroke="#17314a" stroke-opacity="0.45" stroke-width="1.1"/>`);
+    }
+    parts.push(`<line x1="${X(0).toFixed(1)}" y1="${Y(region.halfH).toFixed(1)}" x2="${X(0).toFixed(1)}" y2="${Y(-region.halfH).toFixed(1)}" stroke="#a9bfce" stroke-width="1" stroke-dasharray="5 5"/>`);
+    parts.push(`<text x="${(X(0) + 5).toFixed(1)}" y="${(Y(region.halfH) + 12).toFixed(1)}" font-size="10" fill="#607589">axis</text>`);
+    for (const sz of [1, -1]) {
+      const zp = sz * (c2 + s.airgap / 2);
+      for (const sx of [1, -1]) parts.push(`<line x1="${X(sx * (R - a2 - 7)).toFixed(1)}" y1="${Y(zp).toFixed(1)}" x2="${X(sx * (R + a2 + 7)).toFixed(1)}" y2="${Y(zp).toFixed(1)}" stroke="#17314a" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="3 3"/>`);
+    }
+    const statorRect = (sx, sz) => {
+      const x0 = sx > 0 ? R - s.statorRadial / 2 : -R - s.statorRadial / 2;
+      const z0 = sz * (c2 + s.airgap), z1 = z0 + sz * s.statorAxial;
+      return `<rect x="${X(x0).toFixed(1)}" y="${Y(Math.max(z0, z1)).toFixed(1)}" width="${(s.statorRadial * scale).toFixed(1)}" height="${(s.statorAxial * scale).toFixed(1)}" fill="#dfe9ef" stroke="#a9bfce" stroke-width="1"/>`;
+    };
+    for (const sx of [1, -1]) for (const sz of [1, -1]) parts.push(statorRect(sx, sz));
+    parts.push(`<text x="${X(R).toFixed(1)}" y="${(Y(c2 + s.airgap + s.statorAxial) - 6).toFixed(1)}" text-anchor="middle" font-size="10.5" fill="#607589">Upper machine · stator (schematic) · ${s.polePairs} pole pairs</text>`);
+    parts.push(`<text x="${X(R).toFixed(1)}" y="${(Y(-(c2 + s.airgap + s.statorAxial)) + 14).toFixed(1)}" text-anchor="middle" font-size="10.5" fill="#607589">Lower machine · stator (schematic) · ${add2.polePairsLower} pole pairs</text>`);
+    parts.push(`<text x="${(X(-R) - 8).toFixed(1)}" y="${(Y(0) + 3).toFixed(1)}" text-anchor="end" font-size="10.5" fill="#607589">Shared magnet band</text>`);
+    const angDist = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+    let near0 = magnets[0], nearPi = magnets[0];
+    for (const m of magnets) {
+      if (angDist(m.angle, 0) < angDist(near0.angle, 0)) near0 = m;
+      if (angDist(m.angle, Math.PI) < angDist(nearPi.angle, Math.PI)) nearPi = m;
+    }
+    const glyph = m => {
+      const cx = s.radius * Math.cos(m.angle);
+      const rot = s.tiltDeg * (Math.cos(m.angle) >= 0 ? 1 : -1);
+      const wpx = s.magnetRadial * scale, hpx = s.magnetAxial * scale;
+      const topPole = m.sign > 0 ? 'N' : 'S', bottomPole = m.sign > 0 ? 'S' : 'N';
+      const topColor = m.sign > 0 ? '#c2502a' : '#2e6da4', bottomColor = m.sign > 0 ? '#2e6da4' : '#c2502a';
+      return `<g data-magnet="${m.index}" transform="translate(${X(cx).toFixed(1)} ${Y(0).toFixed(1)}) rotate(${rot.toFixed(1)})" role="button" tabindex="0" aria-label="Magnet ${m.index}, ${topPole} pole up. Activate to flip it."><title>Magnet #${m.index} — click to flip</title>`
+        + `<rect x="${(-wpx / 2).toFixed(1)}" y="${(-hpx / 2).toFixed(1)}" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${topColor}"/>`
+        + `<rect x="${(-wpx / 2).toFixed(1)}" y="0" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${bottomColor}"/>`
+        + `<rect x="${(-wpx / 2).toFixed(1)}" y="${(-hpx / 2).toFixed(1)}" width="${wpx.toFixed(1)}" height="${hpx.toFixed(1)}" fill="none" stroke="#17314a" stroke-width="1.2"/>`
+        + `<text y="${(-hpx / 4 + 3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">${topPole}</text>`
+        + `<text y="${(hpx / 4 + 3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">${bottomPole}</text></g>`
+        + `<text x="${X(cx).toFixed(1)}" y="${(Y(0) + hpx / 2 + 12).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="#607589">#${m.index}</text>`;
+    };
+    parts.push(glyph(near0));
+    if (nearPi !== near0) parts.push(glyph(nearPi));
+    const lgX = W - 158, lgY = 14;
+    parts.push(`<rect x="${lgX}" y="${lgY}" width="132" height="9" fill="url(#field-legend)" stroke="#a9bfce" stroke-width="0.5"/>`);
+    parts.push(`<text x="${lgX}" y="${lgY + 22}" font-size="9.5" fill="#607589">0</text>`);
+    parts.push(`<text x="${lgX + 66}" y="${lgY + 22}" text-anchor="middle" font-size="9.5" fill="#607589">|B|</text>`);
+    parts.push(`<text x="${lgX + 132}" y="${lgY + 22}" text-anchor="end" font-size="9.5" fill="#607589">${unit(grid.max, 2)} T</text>`);
+    stageField.innerHTML = parts.join('');
+    const up = F.sampleAirgap(s, magnets, 1), low = F.sampleAirgap(s, magnets, -1);
+    const fmt = r => `mean ${unit(r.mean, 3)} T · peak ${unit(r.peak, 3)} T`;
+    $('field-upper').textContent = fmt(up);
+    $('field-lower').textContent = fmt(low);
+    const excluded = up.inside + low.inside;
+    $('field-flip-state').textContent = (s.flipped.length ? `${s.flipped.length} of ${magnets.length} magnets flipped` : 'alternating pattern')
+      + (excluded ? ` · ${excluded} gap samples fell inside tilted bars and were skipped` : '');
+    $('field-angle').value = String(Math.round(s.angleDeg));
+    $('field-angle-value').textContent = `${Math.round(s.angleDeg)}°`;
+    $('field-br').value = String(s.br);
+    $('field-br-value').textContent = `${unit(s.br, 2)} T`;
+    $('field-tilt').value = String(Math.round(s.tiltDeg));
+    $('field-tilt-value').textContent = `${Math.round(s.tiltDeg)}°`;
+    const magSlider = $('field-magnet');
+    magSlider.max = String(magnets.length - 1);
+    if (Number(magSlider.value) > magnets.length - 1) { magSlider.value = '0'; $('field-magnet-value').textContent = '0'; }
+  }
+  function stopFieldPlay(refresh = true) {
+    if (!fieldPlaying) return;
+    fieldPlaying = false; cancelAnimationFrame(fieldFrame);
+    const b = $('field-play'); b.textContent = '▶ Play'; b.setAttribute('aria-pressed', 'false');
+    fieldSkipLines = false;
+    persistField();
+    if (refresh && viewMode === 'field' && !document.hidden) renderField();
+  }
+  function fieldTick(t) {
+    if (!fieldPlaying) return;
+    const dt = Math.min(120, t - fieldLast); fieldLast = t;
+    fieldState.angleDeg = ((fieldState.angleDeg + dt * 0.024) % 360 + 360) % 360;
+    const started = performance.now();
+    renderField('draft');
+    // If frames run long twice running, drop the traced lines until the
+    // band stops; the shading and the readings stay live.
+    if (performance.now() - started > 150) { if (++fieldSlowFrames >= 2) fieldSkipLines = true; }
+    else fieldSlowFrames = 0;
+    fieldFrame = requestAnimationFrame(fieldTick);
+  }
+  function flipMagnet(index) {
+    const set = new Set(fieldState.flipped);
+    if (set.has(index)) set.delete(index); else set.add(index);
+    fieldState.flipped = [...set].sort((a, b) => a - b);
+    persistField(); renderField();
+    toast(`Magnet #${index} flipped.`);
+  }
+  stageField.addEventListener('click', e => {
+    const g = e.target.closest('[data-magnet]');
+    if (g) flipMagnet(Number(g.dataset.magnet));
+  });
+  stageField.addEventListener('keydown', e => {
+    const g = e.target.closest('[data-magnet]');
+    if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); flipMagnet(Number(g.dataset.magnet)); }
+  });
+  $('field-play').addEventListener('click', () => {
+    if (fieldPlaying) { stopFieldPlay(); return; }
+    fieldPlaying = true; fieldLast = performance.now(); fieldSlowFrames = 0; fieldSkipLines = false;
+    const b = $('field-play'); b.textContent = '❚❚ Pause'; b.setAttribute('aria-pressed', 'true');
+    fieldFrame = requestAnimationFrame(fieldTick);
+  });
+  $('field-step').addEventListener('click', () => {
+    const s = fieldNow();
+    fieldState.angleDeg = ((fieldState.angleDeg + 360 / (2 * s.polePairs)) % 360 + 360) % 360;
+    persistField(); renderField();
+  });
+  $('field-reset-flips').addEventListener('click', () => { fieldState.flipped = []; persistField(); renderField(); toast('Alternating pattern restored.'); });
+  $('field-flip-all').addEventListener('click', () => {
+    const s = fieldNow(), set = new Set(fieldState.flipped), rest = [];
+    for (let k = 0; k < 2 * s.polePairs; k++) if (!set.has(k)) rest.push(k);
+    fieldState.flipped = rest; persistField(); renderField(); toast('Every magnet flipped.');
+  });
+  $('field-angle').addEventListener('input', e => { fieldState.angleDeg = Number(e.target.value); $('field-angle-value').textContent = `${Math.round(fieldState.angleDeg)}°`; renderField('draft'); });
+  $('field-angle').addEventListener('change', () => { persistField(); renderField(); });
+  $('field-br').addEventListener('input', e => { fieldState.br = Number(e.target.value); $('field-br-value').textContent = `${unit(fieldState.br, 2)} T`; renderField('draft'); });
+  $('field-br').addEventListener('change', () => { persistField(); renderField(); });
+  $('field-tilt').addEventListener('input', e => { fieldState.tiltDeg = Number(e.target.value); $('field-tilt-value').textContent = `${Math.round(fieldState.tiltDeg)}°`; renderField('draft'); });
+  $('field-tilt').addEventListener('change', () => { persistField(); renderField(); });
+  $('field-magnet').addEventListener('input', e => { $('field-magnet-value').textContent = e.target.value; });
+  $('field-flip-one').addEventListener('click', () => flipMagnet(Number($('field-magnet').value)));
+
   render();setTool('select');requestAnimationFrame(()=>viewMode==='3d'?renderScene():fit());
   $('save-status').textContent=storageAvailable?'Editor ready · autosave on this browser':'Editor ready · use Save to keep a JSON copy';
   if(recoveryMessage)toast(recoveryMessage);

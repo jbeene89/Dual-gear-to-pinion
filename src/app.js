@@ -4,6 +4,7 @@
   const $ = id => document.getElementById(id);
   const stage = $('stage'), world = $('world');
   const stage3d = $('stage3d'), G = window.Gear3D, M = window.GearMechanics;
+  const stageField = $('stagefield'), F = window.GearField;
   const clone = value => JSON.parse(JSON.stringify(value));
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -16,6 +17,23 @@
   // settings under their own key, for the same reason: they describe how
   // the modelled transmission is set, not the design file.
   const ADD2_STORE = 'soupy-gear-studio-add2-v1';
+  // Interface preferences — currently just the stylus / touch mode — are
+  // chrome, not design or model state, so they get their own key as well.
+  const UI_STORE = 'soupy-gear-studio-ui-v1';
+  // Screen-space grab sizes for the 2D sketch. GearCore draws invisible
+  // discs of radius HANDLE_HIT_PX around the resize and rotate handles
+  // (divided by zoom, so the size is constant on screen), and the eraser
+  // reaches ERASE_REACH_PX beyond the pointer. Stylus mode widens both:
+  // a pen tip or a fingertip is a blunter instrument than a mouse point.
+  const HANDLE_HIT_PX = 18, HANDLE_HIT_PX_STYLUS = 30;
+  const ERASE_REACH_PX = 6, ERASE_REACH_PX_STYLUS = 20;
+  let stylusMode = false;
+  try { stylusMode = JSON.parse(localStorage.getItem(UI_STORE))?.stylus === true; } catch (error) { stylusMode = false; }
+  function applyStylusMode() {
+    document.body.classList.toggle('stylus-mode', stylusMode);
+    $('stylus-toggle').checked = stylusMode;
+  }
+  applyStylusMode();
   let design = C.starterMotorDrive(), selectedId = null, tool = 'select', viewMode = '3d';
   let past = [], future = [], gesture = null, space = false;
   let view = {x:0, y:0, zoom:1}, playing = false, playStart = 0, frame = 0;
@@ -24,6 +42,13 @@
   try { const raw = localStorage.getItem(DUTY_STORE); if (raw) duty = M.settings(JSON.parse(raw)); } catch (error) { duty = Object.assign({}, M.DEFAULTS); }
   let add2 = Object.assign({}, M.ADD2_DEFAULTS);
   try { const raw = localStorage.getItem(ADD2_STORE); if (raw) add2 = M.add2Settings(JSON.parse(raw)); } catch (error) { add2 = Object.assign({}, M.ADD2_DEFAULTS); }
+  // Field view state — the magnet band's geometry, remanence, tilt,
+  // rotor angle, and which magnets run flipped — is play state, not
+  // design state, so it sits beside the file under its own key too.
+  const FIELD_STORE = 'soupy-gear-studio-field-v1';
+  let fieldState = Object.assign({}, F.FIELD_DEFAULTS);
+  try { const raw = localStorage.getItem(FIELD_STORE); if (raw) fieldState = F.fieldSettings(JSON.parse(raw)); } catch (error) { fieldState = Object.assign({}, F.FIELD_DEFAULTS); }
+  let fieldPlaying = false, fieldFrame = 0, fieldLast = 0, fieldSlowFrames = 0, fieldSkipLines = false;
   const pointers = new Map();
   let recoveryMessage = '';
   try {
@@ -84,6 +109,7 @@
     view = {x:p.x-at.x*z,y:p.y-at.y*z,zoom:z}; renderScene();
   }
   function fit() {
+    if(viewMode==='field') {renderField();return;}
     if(viewMode==='3d') {Object.assign(camera(),{zoom:1,panX:0,panY:0});renderScene();persist();return;}
     const b = C.bounds(design,{compactNotes:stage.clientWidth<600}), rect = stage.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
@@ -99,6 +125,7 @@
     $('zoom-label').textContent = `${Math.round(view.zoom*100)}%`;
   }
   function renderScene(time) {
+    if (viewMode==='field') { renderField(); return; }
     const angles = {};
     if (playing) for (const o of design.objects) {
       const sign = o.direction === 'ccw' ? -1 : o.direction === 'cw' ? 1 : 0;
@@ -109,7 +136,7 @@
       stage3d.setAttribute('viewBox',`0 0 ${Math.max(1,rect.width)} ${Math.max(1,rect.height)}`);
       stage3d.innerHTML=G.render(design,camera(),{width:Math.max(1,rect.width),height:Math.max(1,rect.height),selectedId,angles,grid:$('grid-bg').style.display!=='none',bottomPadding:rect.width<600?110:75,gizmo:rect.width>=600,overlayText:false});
       syncCameraControls();
-    } else world.innerHTML = C.sceneMarkup(design,{selectedId:playing ? null : selectedId,angles,exporting:false,compactNotes:stage.clientWidth<600,handleScale:1/view.zoom});
+    } else world.innerHTML = C.sceneMarkup(design,{selectedId:playing ? null : selectedId,angles,exporting:false,compactNotes:stage.clientWidth<600,handleScale:(stylusMode?HANDLE_HIT_PX_STYLUS/HANDLE_HIT_PX:1)/view.zoom});
     renderView();
   }
   const typeName = {gear:'Gear',ring:'Ring',motor:'Frameless motor + gear cap',compound:'Compound pinion',arrow:'Direction arrow',text:'Text label'};
@@ -183,7 +210,8 @@
     else { badge.textContent = 'consistent'; badge.className = 'analysis-badge good'; }
     // The canvas badge keeps saying "Schematic only"; only its note changes,
     // so a passing check never reads as a validated mechanism.
-    $('schematic-note').textContent = !live.length ? 'Meshing is not validated'
+    $('schematic-note').textContent = viewMode==='field' ? 'Ideal magnets in air · no iron'
+      : !live.length ? 'Meshing is not validated'
       : report.blocking ? report.blocking + (report.blocking === 1 ? ' mesh will not turn' : ' meshes will not turn')
       : 'Sizes and teeth agree · profiles still unvalidated';
 
@@ -357,9 +385,12 @@
   }
   function setViewMode(mode) {
     if(gesture)finishGesture();
-    stopPreview();viewMode=mode;
-    document.querySelector('.app').classList.toggle('is-3d',mode==='3d');
-    stage.hidden=mode==='3d';stage3d.hidden=mode!=='3d';$('camera-controls').hidden=mode!=='3d';
+    stopPreview();stopFieldPlay(false);viewMode=mode;
+    const app=document.querySelector('.app');
+    app.classList.toggle('is-3d',mode==='3d');
+    app.classList.toggle('is-field',mode==='field');
+    stage.hidden=mode!=='2d';stage3d.hidden=mode!=='3d';stageField.hidden=mode!=='field';
+    $('camera-controls').hidden=mode!=='3d';
     document.querySelectorAll('[data-view-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.viewMode===mode);b.setAttribute('aria-pressed',b.dataset.viewMode===mode);});
     setTool(tool);render();
     if(mode==='2d')fit();
@@ -443,7 +474,7 @@
     document.querySelectorAll('[data-tool]').forEach(b => { b.classList.toggle('active',b.dataset.tool===tool); b.setAttribute('aria-pressed',b.dataset.tool===tool); });
     stage.style.cursor = tool==='pan'?'grab':tool==='draw'?'crosshair':tool==='erase'?'cell':'default';
     const hints = {select:'Drag to move · Square handle resizes · Round handle rotates',draw:'Draw with your mouse, pen, or finger · Two fingers pan & zoom',erase:'Drag across ink to erase whole strokes · Undo restores them',pan:'Drag the drawing surface · Scroll or pinch to zoom'};
-    $('canvas-hint').textContent = viewMode==='3d'?'Drag to orbit · Shift-drag to pan · Scroll to zoom · Click a part to edit':hints[tool];
+    $('canvas-hint').textContent = viewMode==='3d'?'Drag to orbit · Shift-drag to pan · Scroll to zoom · Click a part to edit':viewMode==='field'?'A section through the shared magnet band · Click a magnet in the section to flip it':hints[tool];
   }
   function stopPreview() {
     if (!playing) return;
@@ -459,12 +490,12 @@
   });
   function add(type) {
     if (design.objects.length>=200) { toast('This design has reached its 200-part limit. Save it and start another design.'); return; }
-    const rect = stage.getBoundingClientRect(), p = viewMode==='3d'?{x:0,y:0}:boundedPoint(toWorld({x:rect.width/2,y:rect.height/2}));
+    const rect = stage.getBoundingClientRect(), p = viewMode!=='2d'?{x:0,y:0}:boundedPoint(toWorld({x:rect.width/2,y:rect.height/2}));
     mutate(() => { const o=C.createObject(type,p.x,p.y); if(type==='motor'&&isGenerator())o.name='Frameless generator + cap'; design.objects.push(o); selectedId=o.id; });
     setTool('select');
   }
   document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>add(b.dataset.add)));
-  document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{if(viewMode==='3d')setViewMode('2d');setTool(b.dataset.tool);}));
+  document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{if(viewMode!=='2d')setViewMode('2d');setTool(b.dataset.tool);}));
   $('object-list').addEventListener('click',e=>{const b=e.target.closest('[data-select]'); if(b) { setTool('select'); select(b.dataset.select); }});
   function constrainMotor(o) {
     o.motorBand=clamp(o.motorBand,4,o.radius*.8);
@@ -555,7 +586,7 @@
     return Math.hypot(p.x-a[0]-t*dx,p.y-a[1]-t*dy);
   }
   function eraseAt(p) {
-    const reach=Math.max(6,Number($('brush-size').value))/view.zoom;
+    const reach=Math.max(stylusMode?ERASE_REACH_PX_STYLUS:ERASE_REACH_PX,Number($('brush-size').value))/view.zoom;
     design.strokes=design.strokes.filter(s=>{
       if(s.points.length===1) return Math.hypot(p.x-s.points[0][0],p.y-s.points[0][1])>reach+s.width/2;
       return !s.points.some((v,i)=>i>0&&segmentDistance(p,s.points[i-1],v)<=reach+s.width/2);
@@ -647,12 +678,17 @@
   stage.addEventListener('lostpointercapture',e=>{if(pointers.has(e.pointerId)){pointers.delete(e.pointerId);finishGesture();}});
   stage.addEventListener('wheel',e=>{e.preventDefault();zoomAt(Math.exp(-clamp(e.deltaY,-150,150)*.002),localPoint(e));},{passive:false});
   stage.addEventListener('contextmenu',e=>e.preventDefault());
-  $('zoom-in').addEventListener('click',()=>viewMode==='3d'?zoomCamera(1.2):zoomAt(1.2,{x:stage.clientWidth/2,y:stage.clientHeight/2}));
-  $('zoom-out').addEventListener('click',()=>viewMode==='3d'?zoomCamera(1/1.2):zoomAt(1/1.2,{x:stage.clientWidth/2,y:stage.clientHeight/2}));
+  $('zoom-in').addEventListener('click',()=>viewMode==='field'?renderField():viewMode==='3d'?zoomCamera(1.2):zoomAt(1.2,{x:stage.clientWidth/2,y:stage.clientHeight/2}));
+  $('zoom-out').addEventListener('click',()=>viewMode==='field'?renderField():viewMode==='3d'?zoomCamera(1/1.2):zoomAt(1/1.2,{x:stage.clientWidth/2,y:stage.clientHeight/2}));
   $('fit').addEventListener('click',fit);
   $('grid-toggle').addEventListener('click',()=>{const b=$('grid-bg');const hidden=b.style.display==='none';b.style.display=hidden?'':'none';$('grid-toggle').setAttribute('aria-pressed',hidden);$('grid-toggle').classList.toggle('active',hidden);if(viewMode==='3d')renderScene();});
   $('brush-size').addEventListener('input',()=>{$('brush-size-value').textContent=$('brush-size').value;});
   $('notes-toggle').addEventListener('change',()=>mutate(()=>{design.notes=$('notes-toggle').checked;}));
+  $('stylus-toggle').addEventListener('change',()=>{
+    stylusMode = $('stylus-toggle').checked;
+    try { localStorage.setItem(UI_STORE,JSON.stringify({stylus:stylusMode})); } catch (error) { /* a browser copy is best effort */ }
+    applyStylusMode(); renderScene();
+  });
   $('design-name').addEventListener('change',()=>mutate(()=>{design.name=$('design-name').value.trim().slice(0,100)||'Untitled mechanism';}));
   $('undo').addEventListener('click',undo); $('redo').addEventListener('click',redo);
   function loadDriveStarter(generator) {
@@ -722,7 +758,7 @@
     if(e.code==='Space') {if(e.target.closest('button,a,summary'))return;e.preventDefault();space=true;stage.style.cursor='grab';return;}
     if(mod||e.altKey) return;
     const shortcuts={v:'select',b:'draw',e:'erase',h:'pan'};
-    if(shortcuts[key]){if(viewMode==='3d')setViewMode('2d');setTool(shortcuts[key]);}
+    if(shortcuts[key]){if(viewMode!=='2d')setViewMode('2d');setTool(shortcuts[key]);}
     if(key==='f')fit();
     if(key==='delete'||key==='backspace') {e.preventDefault();partAction('remove');}
     if(key==='escape') {finishGesture(true);stopPreview();selectedId=null;setTool('select');render();}
@@ -734,11 +770,192 @@
   document.addEventListener('keyup',e=>{if(e.code==='Space'){space=false;setTool(tool);}});
   window.addEventListener('blur',()=>{space=false;pointers.clear();cameraPointers.clear();cameraGesture=null;finishGesture();});
   window.addEventListener('pagehide',()=>{try{localStorage.setItem(STORE,snapshot());}catch(error){/* Save JSON remains available. */}});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)stopPreview();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){stopPreview();stopFieldPlay();}});
   const refreshSize=()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(renderScene,80);};
   if(typeof ResizeObserver==='function')new ResizeObserver(refreshSize).observe($('stage-wrap'));
   else window.addEventListener('resize',refreshSize);
   if(matchMedia('(max-width:700px)').matches)document.querySelector('.library details')?.removeAttribute('open');
+  /* ---- Field view -----------------------------------------------------
+   * A meridional section through the shared magnet band. GearField's
+   * closed-form superposition does the physics — exact for ideal blocks
+   * in air — and this section only draws it: |B| shading, traced field
+   * lines, the two magnets the plane cuts, and schematic stators that
+   * are rectangles and labels, because with no iron in the model they
+   * cannot change the field. The view says so, in its own bar.
+   */
+  function fieldNow() {
+    // The band's pole count follows the Addendum 2 upper pole-pair
+    // parameter, so the section and the analysis panel cannot disagree
+    // about the counts the treaty is written in.
+    return F.fieldSettings(Object.assign({}, fieldState, { polePairs: add2.polePairsUpper }));
+  }
+  function persistField() {
+    try { localStorage.setItem(FIELD_STORE, JSON.stringify(fieldState)); } catch (error) { /* a browser copy is best effort */ }
+  }
+  const FIELD_STOPS = [[0, '#edf4f8'], [0.18, '#cfe3ee'], [0.38, '#9cc3d4'], [0.55, '#5da9bd'], [0.7, '#087e8b'], [0.85, '#d78a18'], [1, '#b23c17']];
+  function fieldColor(t) {
+    const x = clamp(t, 0, 1) * (FIELD_STOPS.length - 1);
+    const i = Math.min(FIELD_STOPS.length - 2, Math.floor(x)), f = x - i;
+    const ch = (c, k) => parseInt(c.slice(1 + 2 * k, 3 + 2 * k), 16);
+    const mix = k => Math.round(ch(FIELD_STOPS[i][1], k) + (ch(FIELD_STOPS[i + 1][1], k) - ch(FIELD_STOPS[i][1], k)) * f);
+    return `rgb(${mix(0)},${mix(1)},${mix(2)})`;
+  }
+  function renderField(quality) {
+    const rect = stageField.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return;   // hidden: nothing to draw into yet
+    const W = Math.max(1, rect.width), H = Math.max(1, rect.height);
+    stageField.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const s = fieldNow();
+    const magnets = F.bandMagnets(s);
+    const region = F.sectionRegion(s);
+    const scale = Math.min(W / (2 * region.halfW), H / (2 * region.halfH));
+    const X = v => W / 2 + v * scale, Y = v => H / 2 - v * scale;
+    const draft = quality === 'draft';
+    const grid = F.sectionGrid(s, magnets, draft ? 40 : 88, draft ? 22 : 50);
+    const parts = [];
+    parts.push(`<defs><linearGradient id="field-legend" x1="0" y1="0" x2="1" y2="0">${FIELD_STOPS.map(([o, c]) => `<stop offset="${o * 100}%" stop-color="${c}"/>`).join('')}</linearGradient></defs>`);
+    const inv = grid.max > 0 ? 1 / grid.max : 0;
+    for (let j = 0; j < grid.nz; j++) {
+      const yTop = Y(grid.halfH - j * grid.dz);
+      for (let i = 0; i < grid.nx; i++) {
+        const v = grid.values[j * grid.nx + i] * inv;
+        if (v < 0.02) continue;
+        parts.push(`<rect x="${X(-grid.halfW + i * grid.dx).toFixed(1)}" y="${yTop.toFixed(1)}" width="${(grid.dx * scale + 0.6).toFixed(1)}" height="${(grid.dz * scale + 0.6).toFixed(1)}" fill="${fieldColor(v)}"/>`);
+      }
+    }
+    const R = s.radius, a2 = s.magnetRadial / 2, c2 = s.magnetAxial / 2;
+    const seeds = [];
+    for (const sx of [1, -1]) {
+      for (const fx of [-0.45, 0, 0.45]) for (const fz of [1, -1]) seeds.push([sx * (R + fx * s.magnetRadial), fz * (c2 + Math.max(1.2, s.airgap * 0.8))]);
+      seeds.push([sx * (R - a2 - 1.5), 0]);
+    }
+    const lineSet = draft ? (fieldSkipLines ? [] : seeds.filter((_, i) => i % 2 === 0)) : seeds;
+    for (const seed of lineSet) {
+      const pts = F.streamline(s, magnets, seed, draft ? { step: 2.2, maxSteps: 130 } : {});
+      if (pts.length < 3) continue;
+      parts.push(`<polyline points="${pts.map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ')}" fill="none" stroke="#17314a" stroke-opacity="0.45" stroke-width="1.1"/>`);
+    }
+    parts.push(`<line x1="${X(0).toFixed(1)}" y1="${Y(region.halfH).toFixed(1)}" x2="${X(0).toFixed(1)}" y2="${Y(-region.halfH).toFixed(1)}" stroke="#a9bfce" stroke-width="1" stroke-dasharray="5 5"/>`);
+    parts.push(`<text x="${(X(0) + 5).toFixed(1)}" y="${(Y(region.halfH) + 12).toFixed(1)}" font-size="10" fill="#607589">axis</text>`);
+    for (const sz of [1, -1]) {
+      const zp = sz * (c2 + s.airgap / 2);
+      for (const sx of [1, -1]) parts.push(`<line x1="${X(sx * (R - a2 - 7)).toFixed(1)}" y1="${Y(zp).toFixed(1)}" x2="${X(sx * (R + a2 + 7)).toFixed(1)}" y2="${Y(zp).toFixed(1)}" stroke="#17314a" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="3 3"/>`);
+    }
+    const statorRect = (sx, sz) => {
+      const x0 = sx > 0 ? R - s.statorRadial / 2 : -R - s.statorRadial / 2;
+      const z0 = sz * (c2 + s.airgap), z1 = z0 + sz * s.statorAxial;
+      return `<rect x="${X(x0).toFixed(1)}" y="${Y(Math.max(z0, z1)).toFixed(1)}" width="${(s.statorRadial * scale).toFixed(1)}" height="${(s.statorAxial * scale).toFixed(1)}" fill="#dfe9ef" stroke="#a9bfce" stroke-width="1"/>`;
+    };
+    for (const sx of [1, -1]) for (const sz of [1, -1]) parts.push(statorRect(sx, sz));
+    parts.push(`<text x="${X(R).toFixed(1)}" y="${(Y(c2 + s.airgap + s.statorAxial) - 6).toFixed(1)}" text-anchor="middle" font-size="10.5" fill="#607589">Upper machine · stator (schematic) · ${s.polePairs} pole pairs</text>`);
+    parts.push(`<text x="${X(R).toFixed(1)}" y="${(Y(-(c2 + s.airgap + s.statorAxial)) + 14).toFixed(1)}" text-anchor="middle" font-size="10.5" fill="#607589">Lower machine · stator (schematic) · ${add2.polePairsLower} pole pairs</text>`);
+    parts.push(`<text x="${(X(-R) - 8).toFixed(1)}" y="${(Y(0) + 3).toFixed(1)}" text-anchor="end" font-size="10.5" fill="#607589">Shared magnet band</text>`);
+    const angDist = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+    let near0 = magnets[0], nearPi = magnets[0];
+    for (const m of magnets) {
+      if (angDist(m.angle, 0) < angDist(near0.angle, 0)) near0 = m;
+      if (angDist(m.angle, Math.PI) < angDist(nearPi.angle, Math.PI)) nearPi = m;
+    }
+    const glyph = m => {
+      const cx = s.radius * Math.cos(m.angle);
+      const rot = s.tiltDeg * (Math.cos(m.angle) >= 0 ? 1 : -1);
+      const wpx = s.magnetRadial * scale, hpx = s.magnetAxial * scale;
+      const topPole = m.sign > 0 ? 'N' : 'S', bottomPole = m.sign > 0 ? 'S' : 'N';
+      const topColor = m.sign > 0 ? '#c2502a' : '#2e6da4', bottomColor = m.sign > 0 ? '#2e6da4' : '#c2502a';
+      return `<g data-magnet="${m.index}" transform="translate(${X(cx).toFixed(1)} ${Y(0).toFixed(1)}) rotate(${rot.toFixed(1)})" role="button" tabindex="0" aria-label="Magnet ${m.index}, ${topPole} pole up. Activate to flip it."><title>Magnet #${m.index} — click to flip</title>`
+        + `<rect x="${(-wpx / 2).toFixed(1)}" y="${(-hpx / 2).toFixed(1)}" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${topColor}"/>`
+        + `<rect x="${(-wpx / 2).toFixed(1)}" y="0" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${bottomColor}"/>`
+        + `<rect x="${(-wpx / 2).toFixed(1)}" y="${(-hpx / 2).toFixed(1)}" width="${wpx.toFixed(1)}" height="${hpx.toFixed(1)}" fill="none" stroke="#17314a" stroke-width="1.2"/>`
+        + `<text y="${(-hpx / 4 + 3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">${topPole}</text>`
+        + `<text y="${(hpx / 4 + 3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">${bottomPole}</text></g>`
+        + `<text x="${X(cx).toFixed(1)}" y="${(Y(0) + hpx / 2 + 12).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="#607589">#${m.index}</text>`;
+    };
+    parts.push(glyph(near0));
+    if (nearPi !== near0) parts.push(glyph(nearPi));
+    const lgX = W - 158, lgY = 14;
+    parts.push(`<rect x="${lgX}" y="${lgY}" width="132" height="9" fill="url(#field-legend)" stroke="#a9bfce" stroke-width="0.5"/>`);
+    parts.push(`<text x="${lgX}" y="${lgY + 22}" font-size="9.5" fill="#607589">0</text>`);
+    parts.push(`<text x="${lgX + 66}" y="${lgY + 22}" text-anchor="middle" font-size="9.5" fill="#607589">|B|</text>`);
+    parts.push(`<text x="${lgX + 132}" y="${lgY + 22}" text-anchor="end" font-size="9.5" fill="#607589">${unit(grid.max, 2)} T</text>`);
+    stageField.innerHTML = parts.join('');
+    const up = F.sampleAirgap(s, magnets, 1), low = F.sampleAirgap(s, magnets, -1);
+    const fmt = r => `mean ${unit(r.mean, 3)} T · peak ${unit(r.peak, 3)} T`;
+    $('field-upper').textContent = fmt(up);
+    $('field-lower').textContent = fmt(low);
+    const excluded = up.inside + low.inside;
+    $('field-flip-state').textContent = (s.flipped.length ? `${s.flipped.length} of ${magnets.length} magnets flipped` : 'alternating pattern')
+      + (excluded ? ` · ${excluded} gap samples fell inside tilted bars and were skipped` : '');
+    $('field-angle').value = String(Math.round(s.angleDeg));
+    $('field-angle-value').textContent = `${Math.round(s.angleDeg)}°`;
+    $('field-br').value = String(s.br);
+    $('field-br-value').textContent = `${unit(s.br, 2)} T`;
+    $('field-tilt').value = String(Math.round(s.tiltDeg));
+    $('field-tilt-value').textContent = `${Math.round(s.tiltDeg)}°`;
+    const magSlider = $('field-magnet');
+    magSlider.max = String(magnets.length - 1);
+    if (Number(magSlider.value) > magnets.length - 1) { magSlider.value = '0'; $('field-magnet-value').textContent = '0'; }
+  }
+  function stopFieldPlay(refresh = true) {
+    if (!fieldPlaying) return;
+    fieldPlaying = false; cancelAnimationFrame(fieldFrame);
+    const b = $('field-play'); b.textContent = '▶ Play'; b.setAttribute('aria-pressed', 'false');
+    fieldSkipLines = false;
+    persistField();
+    if (refresh && viewMode === 'field' && !document.hidden) renderField();
+  }
+  function fieldTick(t) {
+    if (!fieldPlaying) return;
+    const dt = Math.min(120, t - fieldLast); fieldLast = t;
+    fieldState.angleDeg = ((fieldState.angleDeg + dt * 0.024) % 360 + 360) % 360;
+    const started = performance.now();
+    renderField('draft');
+    // If frames run long twice running, drop the traced lines until the
+    // band stops; the shading and the readings stay live.
+    if (performance.now() - started > 150) { if (++fieldSlowFrames >= 2) fieldSkipLines = true; }
+    else fieldSlowFrames = 0;
+    fieldFrame = requestAnimationFrame(fieldTick);
+  }
+  function flipMagnet(index) {
+    const set = new Set(fieldState.flipped);
+    if (set.has(index)) set.delete(index); else set.add(index);
+    fieldState.flipped = [...set].sort((a, b) => a - b);
+    persistField(); renderField();
+    toast(`Magnet #${index} flipped.`);
+  }
+  stageField.addEventListener('click', e => {
+    const g = e.target.closest('[data-magnet]');
+    if (g) flipMagnet(Number(g.dataset.magnet));
+  });
+  stageField.addEventListener('keydown', e => {
+    const g = e.target.closest('[data-magnet]');
+    if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); flipMagnet(Number(g.dataset.magnet)); }
+  });
+  $('field-play').addEventListener('click', () => {
+    if (fieldPlaying) { stopFieldPlay(); return; }
+    fieldPlaying = true; fieldLast = performance.now(); fieldSlowFrames = 0; fieldSkipLines = false;
+    const b = $('field-play'); b.textContent = '❚❚ Pause'; b.setAttribute('aria-pressed', 'true');
+    fieldFrame = requestAnimationFrame(fieldTick);
+  });
+  $('field-step').addEventListener('click', () => {
+    const s = fieldNow();
+    fieldState.angleDeg = ((fieldState.angleDeg + 360 / (2 * s.polePairs)) % 360 + 360) % 360;
+    persistField(); renderField();
+  });
+  $('field-reset-flips').addEventListener('click', () => { fieldState.flipped = []; persistField(); renderField(); toast('Alternating pattern restored.'); });
+  $('field-flip-all').addEventListener('click', () => {
+    const s = fieldNow(), set = new Set(fieldState.flipped), rest = [];
+    for (let k = 0; k < 2 * s.polePairs; k++) if (!set.has(k)) rest.push(k);
+    fieldState.flipped = rest; persistField(); renderField(); toast('Every magnet flipped.');
+  });
+  $('field-angle').addEventListener('input', e => { fieldState.angleDeg = Number(e.target.value); $('field-angle-value').textContent = `${Math.round(fieldState.angleDeg)}°`; renderField('draft'); });
+  $('field-angle').addEventListener('change', () => { persistField(); renderField(); });
+  $('field-br').addEventListener('input', e => { fieldState.br = Number(e.target.value); $('field-br-value').textContent = `${unit(fieldState.br, 2)} T`; renderField('draft'); });
+  $('field-br').addEventListener('change', () => { persistField(); renderField(); });
+  $('field-tilt').addEventListener('input', e => { fieldState.tiltDeg = Number(e.target.value); $('field-tilt-value').textContent = `${Math.round(fieldState.tiltDeg)}°`; renderField('draft'); });
+  $('field-tilt').addEventListener('change', () => { persistField(); renderField(); });
+  $('field-magnet').addEventListener('input', e => { $('field-magnet-value').textContent = e.target.value; });
+  $('field-flip-one').addEventListener('click', () => flipMagnet(Number($('field-magnet').value)));
+
   render();setTool('select');requestAnimationFrame(()=>viewMode==='3d'?renderScene():fit());
   $('save-status').textContent=storageAvailable?'Editor ready · autosave on this browser':'Editor ready · use Save to keep a JSON copy';
   if(recoveryMessage)toast(recoveryMessage);

@@ -12,7 +12,7 @@ function test(name, fn) {
   catch (error) { failed++; failures.push({ suite, name, error }); process.stdout.write('x'); }
 }
 
-const suites = ['./mechanics.test.cjs', './core.test.cjs', './bundle.test.cjs'];
+const suites = ['./mechanics.test.cjs', './core.test.cjs', './field.test.cjs', './bundle.test.cjs'];
 for (const file of suites) {
   suite = file.replace('./', '').replace('.test.cjs', '');
   process.stdout.write('\n' + suite.padEnd(10) + ' ');
