@@ -91,7 +91,10 @@ Shading shows |B| in the section plane with a tesla legend, field lines
 are traced through it, and two readings report the mean and peak |B|
 sampled around each machine's airgap. Turn the band with the angle
 slider, the step button, or play; set the remanence from 0 to 1.4 T;
-tilt the bars about their tangential axes; click a magnet in the
+tilt the bars about their tangential axes; grade the band's
+magnetization toward one machine with the bias slider, which models
+each bar as two stacked half-bars and fades one half's remanence
+against the other; click a magnet in the
 section — or choose its number — to flip its polarity. The band's pole
 count follows the analysis panel's upper pole-pair parameter, so the
 two views cannot disagree about the counts. The stators are drawn, not
@@ -99,7 +102,15 @@ modelled: the model is ideal blocks in air, with no iron, no saturation,
 and no eddy currents, so the stators cannot change the field — and
 tilting the bars turns the pattern without steering the split between
 the gaps, whose readings stay near-equal. In the real machine that
-steering is the iron circuit's work, and there is no iron here. Field
+steering is the iron circuit's work, and there is no iron here. The
+bias is a different lever — graded sourcing, not steering: it changes
+what each face of the band is fed instead of where a symmetric source
+points, and in air it does move the split. At the default geometry the
+upper gap's share of the two mean readings runs from about 45% to
+about 55% across the bias range, and a split readout beside the gap
+readings shows where it stands. The share is bought with total flux —
+a fully biased band has half of every bar faded out — so the trade is
+in the numbers, not hidden. Field
 settings are stored separately from the design, like the duty point.
 
 **What a pass means.** Only that the drawing is internally consistent. Tooth

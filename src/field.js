@@ -25,6 +25,13 @@
  * The seesaw tilt is the bars' literal pivot angle about their
  * tangential axes, applied to geometry and magnetization together —
  * the same rotation the closed form already handles, nothing rescaled.
+ *
+ * The band bias grades each bar's magnetization across its axial
+ * thickness: a bar is two stacked half-bars, and the bias fades one
+ * half's remanence against the other, so the face the band presents to
+ * one machine is sourced harder than the face it presents to the
+ * other. That is graded sourcing — what each face is fed — not the
+ * tilt's steering, which only re-aims a symmetric source.
  */
 (function (root, factory) {
   'use strict';
@@ -48,6 +55,7 @@
     statorRadial: 56,     // mm, schematic stator radial width (drawn only)
     statorAxial: 18,      // mm, schematic stator axial thickness (drawn only)
     br: 1.2,              // T, remanence of the bar material
+    bias: 0,              // -1..1: grade the halves' remanence toward the lower (-1) or upper (+1) face; 0 is the uniform bar
     tiltDeg: 0,           // bar pivot angle about the tangential axis
     angleDeg: 0,          // rotor angle of magnet 0
     flipped: []           // indices of magnets flipped against the pattern
@@ -75,6 +83,7 @@
       statorRadial: num(raw.statorRadial, FIELD_DEFAULTS.statorRadial, 1, 2000),
       statorAxial: num(raw.statorAxial, FIELD_DEFAULTS.statorAxial, 1, 1000),
       br: num(raw.br, FIELD_DEFAULTS.br, 0, 1.4),
+      bias: num(raw.bias, FIELD_DEFAULTS.bias, -1, 1),
       tiltDeg: num(raw.tiltDeg, FIELD_DEFAULTS.tiltDeg, -60, 60),
       angleDeg: Number.isFinite(angle) ? ((angle % 360) + 360) % 360 : 0,
       flipped
@@ -85,6 +94,18 @@
   // the fill factor. The rest of the arc is the gap between bars.
   function magnetTangential(s) {
     return s.fillFactor * (2 * Math.PI * s.radius) / (2 * s.polePairs);
+  }
+
+  /* The bias as remanence multipliers for a bar's two half-bars,
+   * [upper, lower]. The favoured half always sits at full remanence
+   * and the other fades against it: bias 0 is [1, 1] (the uniform bar
+   * the view shipped with), +1 is [1, 0] (only the upper half-bar is
+   * magnetized), -1 the mirror. Nothing is ever scaled above the
+   * material's Br — a grade can only take magnetization away.
+   */
+  function biasHalves(bias) {
+    const b = num(bias, 0, -1, 1);
+    return [1 - Math.max(0, -b), 1 - Math.max(0, b)];
   }
 
   /* H (A/m) of one uniformly charged rectangle lying in the plane z = zf,
@@ -141,6 +162,7 @@
     const n = 2 * s.polePairs;
     const tilt = s.tiltDeg * RAD, ct = Math.cos(tilt), st = Math.sin(tilt);
     const flipped = new Set(s.flipped);
+    const [upMult, lowMult] = biasHalves(s.bias);
     const magnets = [];
     for (let k = 0; k < n; k++) {
       const phi = s.angleDeg * RAD + k * (2 * Math.PI / n);
@@ -154,36 +176,53 @@
           [-sf, cf, 0],                 // body y: tangential
           [st * cf, st * sf, ct]        // body z: axial, tipped by the pivot
         ],
-        sign: (k % 2 === 0 ? 1 : -1) * (flipped.has(k) ? -1 : 1)
+        sign: (k % 2 === 0 ? 1 : -1) * (flipped.has(k) ? -1 : 1),
+        // The bar as two stacked half-bars, offset along its own axis.
+        // The bias lives here, in their remanences — at bias 0 the two
+        // charged faces at the mid-plane cancel and the pair is exactly
+        // the uniform bar.
+        halves: [
+          { dz: s.magnetAxial / 4, br: s.br * upMult },
+          { dz: -s.magnetAxial / 4, br: s.br * lowMult }
+        ]
       });
     }
     return magnets;
   }
 
-  // Total B at a world point, summed over the placed blocks.
+  // Total B at a world point, summed over the placed blocks — each
+  // block contributing its two half-bars at their own remanences.
   function fieldAt(p, raw, magnets) {
     const s = fieldSettings(raw);
     const list = magnets || bandMagnets(s);
-    const half = [s.magnetRadial / 2, magnetTangential(s) / 2, s.magnetAxial / 2];
+    const half = [s.magnetRadial / 2, magnetTangential(s) / 2, s.magnetAxial / 4];
     const B = [0, 0, 0];
     for (const m of list) {
+      const halves = m.halves || [
+        { dz: s.magnetAxial / 4, br: s.br * biasHalves(s.bias)[0] },
+        { dz: -s.magnetAxial / 4, br: s.br * biasHalves(s.bias)[1] }
+      ];
       const dx = p[0] - m.center[0], dy = p[1] - m.center[1], dz = p[2] - m.center[2];
       const local = [
         dx * m.axes[0][0] + dy * m.axes[0][1] + dz * m.axes[0][2],
         dx * m.axes[1][0] + dy * m.axes[1][1] + dz * m.axes[1][2],
         dx * m.axes[2][0] + dy * m.axes[2][1] + dz * m.axes[2][2]
       ];
-      const bl = blockB(local, half, m.sign, s.br);
-      B[0] += m.axes[0][0] * bl[0] + m.axes[1][0] * bl[1] + m.axes[2][0] * bl[2];
-      B[1] += m.axes[0][1] * bl[0] + m.axes[1][1] * bl[1] + m.axes[2][1] * bl[2];
-      B[2] += m.axes[0][2] * bl[0] + m.axes[1][2] * bl[1] + m.axes[2][2] * bl[2];
+      for (const h of halves) {
+        const bl = blockB([local[0], local[1], local[2] - h.dz], half, m.sign, h.br);
+        B[0] += m.axes[0][0] * bl[0] + m.axes[1][0] * bl[1] + m.axes[2][0] * bl[2];
+        B[1] += m.axes[0][1] * bl[0] + m.axes[1][1] * bl[1] + m.axes[2][1] * bl[2];
+        B[2] += m.axes[0][2] * bl[0] + m.axes[1][2] * bl[1] + m.axes[2][2] * bl[2];
+      }
     }
     return B;
   }
 
-  // Is a world point inside any placed block? Tilted bars swing their
-  // corners through the zero-tilt gap planes, so the airgap sample has
-  // to ask — a point inside magnet material is not an airgap point.
+  // Is a world point inside any placed block? The two half-bars tile
+  // the block exactly, biased or not, so the test is against the whole
+  // bar. Tilted bars swing their corners through the zero-tilt gap
+  // planes, so the airgap sample has to ask — a point inside magnet
+  // material is not an airgap point.
   function insideAnyBlock(p, raw, magnets) {
     const s = fieldSettings(raw);
     const list = magnets || bandMagnets(s);
@@ -217,6 +256,18 @@
       used++;
     }
     return { mean: used ? sum / used : 0, peak, samples: used, inside };
+  }
+
+  // Both gaps at once, with the upper gap's share of the two means —
+  // the number the bias is judged by. A band sourcing nothing (Br 0)
+  // splits evenly by definition.
+  function gapSplit(raw, magnets, count = 120) {
+    const s = fieldSettings(raw);
+    const list = magnets || bandMagnets(s);
+    const upper = sampleAirgap(s, list, 1, count);
+    const lower = sampleAirgap(s, list, -1, count);
+    const total = upper.mean + lower.mean;
+    return { upper, lower, upperShare: total > 0 ? upper.mean / total : 0.5 };
   }
 
   // The section region: wide enough to hold both stator sections and a
@@ -296,6 +347,6 @@
     return back.concat([[seed[0], seed[1]]], trace(1));
   }
 
-  return { MU0, FIELD_DEFAULTS, fieldSettings, magnetTangential, bandMagnets,
-    blockB, fieldAt, insideAnyBlock, sampleAirgap, sectionRegion, sectionGrid, streamline };
+  return { MU0, FIELD_DEFAULTS, fieldSettings, magnetTangential, biasHalves, bandMagnets,
+    blockB, fieldAt, insideAnyBlock, sampleAirgap, gapSplit, sectionRegion, sectionGrid, streamline };
 });

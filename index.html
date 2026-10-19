@@ -191,10 +191,11 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
         <label class="camera-field" for="field-angle"><span>Rotor angle <output id="field-angle-value" for="field-angle">0°</output></span><input type="range" id="field-angle" min="0" max="360" step="1" value="0" aria-label="Rotor angle"></label>
         <label class="camera-field" for="field-br"><span>Remanence Br <output id="field-br-value" for="field-br">1.20 T</output></span><input type="range" id="field-br" min="0" max="1.4" step="0.05" value="1.2" aria-label="Remanence in tesla"></label>
         <label class="camera-field" for="field-tilt"><span>Bar tilt <output id="field-tilt-value" for="field-tilt">0°</output></span><input type="range" id="field-tilt" min="-60" max="60" step="1" value="0" aria-label="Bar tilt in degrees"></label>
+        <label class="camera-field" for="field-bias"><span>Band bias <output id="field-bias-value" for="field-bias">balanced</output></span><input type="range" id="field-bias" min="-1" max="1" step="0.05" value="0" aria-label="Band bias: grade the band's magnetization toward the upper or lower machine"></label>
         <label class="camera-field" for="field-magnet"><span>Flip magnet # <output id="field-magnet-value" for="field-magnet">0</output></span><input type="range" id="field-magnet" min="0" max="29" step="1" value="0" aria-label="Magnet index to flip"></label>
       </div>
       <button id="field-flip-one" title="Flip the chosen magnet's polarity">Flip it</button>
-      <p class="field-readouts">Airgap |B| midway across each gap, sampled around the band — upper <strong id="field-upper">—</strong> · lower <strong id="field-lower">—</strong> · <span id="field-flip-state"></span></p>
+      <p class="field-readouts">Airgap |B| midway across each gap, sampled around the band — upper <strong id="field-upper">—</strong> · lower <strong id="field-lower">—</strong> · split <strong id="field-split">—</strong> · <span id="field-flip-state"></span></p>
       <p class="field-note">Ideal uniformly magnetized blocks in air — no iron, no saturation, no eddy currents. Exact for that idealization; the stators are drawn, not modelled.</p>
     </div>
     <div class="tool-rail">
@@ -234,7 +235,7 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
 </main>
 </div>
 <div id="toast" role="status" hidden></div>
-<dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-heading"><div><span class="dialog-brand">Soupy Gear Studio</span><h1 id="help-title">See the shaft. Shape the idea.</h1></div><button id="help-close" class="icon-button" aria-label="Close help">×</button></div><div class="help-body"><p>Use <strong>3D orientation</strong> to inspect two frameless motor rings, their geared caps, and the shared shaft from different angles. Use <strong>2D sketch</strong> to arrange parts and draw freely. Both views share the same design.</p><p><strong>Field view</strong> cuts a section through the shared magnet band of the design plan's Addendum 2 and computes its magnetic field exactly for ideal uniformly magnetized blocks in air — no iron, no saturation, no eddy currents. Turn the band, tilt the bars, change the remanence, or click a magnet in the section to flip it, and watch the field lines and the two airgap readings follow. The stators are drawn, not modelled; in air they change nothing.</p><section class="help-power"><h2>Motor or generator</h2><p><strong>Motor drive:</strong> electrical input → rings → output shaft. <strong>Generator:</strong> mechanical input → shaft → rings → electrical output.</p><p>The mode changes the intended power flow, not the chosen spin directions. Generator mode is conceptual; there is no electrical simulation. Driven permanent-magnet machines require suitable power electronics to deliver usable electrical output.</p><p><strong>Load motor layout</strong> or <strong>Load generator layout</strong> replaces a restored older layout with the current arrangement. Undo returns to your previous design.</p></section><div class="help-columns"><section><h2>Build the motor concept</h2><ul><li><strong>Motor + gear cap</strong> adds a frameless motor ring with an oversized flat cap. The cap edge turns downward into a toothed skirt.</li><li>The <strong>higher, larger cap</strong> meets the top of the small pinion section. The <strong>lower, smaller cap</strong> meets the bottom of the large section. These are intended contact locations in the schematic. Both sections share <strong>one shared shaft outside both motor bodies</strong>.</li><li><strong>Point shaft toward rings</strong> changes the shaft heading at its current position. Its two pinion sections stay together on one shaft.</li><li>Select a part to edit its size, teeth, color, and orientation in <strong>Selection</strong>. For a compound pinion, <strong>Shaft extension</strong> adds length beyond the base shaft, and <strong>Working end</strong> chooses the small-gear or large-gear end. The current layouts extend the small-gear end outward by 120 drawing units without moving either gear section.</li><li><strong>Camera</strong> buttons and Orbit, Tilt, and Roll sliders change where you look from. They do not change a part's orientation.</li><li>Drag the 3D view to orbit. Shift-drag to pan. Scroll to zoom, or use the zoom buttons and <strong>Fit</strong>.</li></ul></section><section><h2>Sketch and share</h2><ul><li>In <strong>2D sketch</strong>, drag a part to move it. Use its handles to rotate or resize it.</li><li><strong>Draw</strong> and <strong>Erase</strong> work in 2D. Choose your ink color and brush size. In 3D, your drawing appears on the flat XY sketch plane.</li><li><strong>Preview rotation</strong> animates the chosen directions. Motion is illustrative and does not solve gear meshing.</li><li><strong>Save</strong> keeps an editable JSON file. <strong>Load</strong> opens it again. Export PNG or SVG to share a drawing.</li></ul></section></div><h2>Handy shortcuts</h2><div class="shortcut-grid"><span><kbd>V</kbd> Select in 2D</span><span><kbd>B</kbd> Draw in 2D</span><span><kbd>E</kbd> Erase in 2D</span><span><kbd>H</kbd> Pan in 2D</span><span><kbd>F</kbd> Fit view</span><span><kbd>Delete</kbd> Remove selection</span><span><kbd>Ctrl Z</kbd> Undo</span><span><kbd>Ctrl Shift Z</kbd> Redo</span><span><kbd>Ctrl S</kbd> Save</span></div><p class="help-warning"><strong>Orientation is visible. Gear meshing is not validated.</strong> The 3D view illustrates the intended motor rings, downward toothed cap skirts, and outside compound-shaft arrangement. Tooth profiles, contacts, shaft angles, dimensions, clearances, ratios, forces, and manufacturing readiness still need engineering validation.</p></div></dialog>
+<dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-heading"><div><span class="dialog-brand">Soupy Gear Studio</span><h1 id="help-title">See the shaft. Shape the idea.</h1></div><button id="help-close" class="icon-button" aria-label="Close help">×</button></div><div class="help-body"><p>Use <strong>3D orientation</strong> to inspect two frameless motor rings, their geared caps, and the shared shaft from different angles. Use <strong>2D sketch</strong> to arrange parts and draw freely. Both views share the same design.</p><p><strong>Field view</strong> cuts a section through the shared magnet band of the design plan's Addendum 2 and computes its magnetic field exactly for ideal uniformly magnetized blocks in air — no iron, no saturation, no eddy currents. Turn the band, tilt the bars, change the remanence, grade the band's magnetization toward one machine with the bias slider, or click a magnet in the section to flip it, and watch the field lines and the two airgap readings follow. The stators are drawn, not modelled; in air they change nothing.</p><section class="help-power"><h2>Motor or generator</h2><p><strong>Motor drive:</strong> electrical input → rings → output shaft. <strong>Generator:</strong> mechanical input → shaft → rings → electrical output.</p><p>The mode changes the intended power flow, not the chosen spin directions. Generator mode is conceptual; there is no electrical simulation. Driven permanent-magnet machines require suitable power electronics to deliver usable electrical output.</p><p><strong>Load motor layout</strong> or <strong>Load generator layout</strong> replaces a restored older layout with the current arrangement. Undo returns to your previous design.</p></section><div class="help-columns"><section><h2>Build the motor concept</h2><ul><li><strong>Motor + gear cap</strong> adds a frameless motor ring with an oversized flat cap. The cap edge turns downward into a toothed skirt.</li><li>The <strong>higher, larger cap</strong> meets the top of the small pinion section. The <strong>lower, smaller cap</strong> meets the bottom of the large section. These are intended contact locations in the schematic. Both sections share <strong>one shared shaft outside both motor bodies</strong>.</li><li><strong>Point shaft toward rings</strong> changes the shaft heading at its current position. Its two pinion sections stay together on one shaft.</li><li>Select a part to edit its size, teeth, color, and orientation in <strong>Selection</strong>. For a compound pinion, <strong>Shaft extension</strong> adds length beyond the base shaft, and <strong>Working end</strong> chooses the small-gear or large-gear end. The current layouts extend the small-gear end outward by 120 drawing units without moving either gear section.</li><li><strong>Camera</strong> buttons and Orbit, Tilt, and Roll sliders change where you look from. They do not change a part's orientation.</li><li>Drag the 3D view to orbit. Shift-drag to pan. Scroll to zoom, or use the zoom buttons and <strong>Fit</strong>.</li></ul></section><section><h2>Sketch and share</h2><ul><li>In <strong>2D sketch</strong>, drag a part to move it. Use its handles to rotate or resize it.</li><li><strong>Draw</strong> and <strong>Erase</strong> work in 2D. Choose your ink color and brush size. In 3D, your drawing appears on the flat XY sketch plane.</li><li><strong>Preview rotation</strong> animates the chosen directions. Motion is illustrative and does not solve gear meshing.</li><li><strong>Save</strong> keeps an editable JSON file. <strong>Load</strong> opens it again. Export PNG or SVG to share a drawing.</li></ul></section></div><h2>Handy shortcuts</h2><div class="shortcut-grid"><span><kbd>V</kbd> Select in 2D</span><span><kbd>B</kbd> Draw in 2D</span><span><kbd>E</kbd> Erase in 2D</span><span><kbd>H</kbd> Pan in 2D</span><span><kbd>F</kbd> Fit view</span><span><kbd>Delete</kbd> Remove selection</span><span><kbd>Ctrl Z</kbd> Undo</span><span><kbd>Ctrl Shift Z</kbd> Redo</span><span><kbd>Ctrl S</kbd> Save</span></div><p class="help-warning"><strong>Orientation is visible. Gear meshing is not validated.</strong> The 3D view illustrates the intended motor rings, downward toothed cap skirts, and outside compound-shaft arrangement. Tooth profiles, contacts, shaft angles, dimensions, clearances, ratios, forces, and manufacturing readiness still need engineering validation.</p></div></dialog>
 <script>
 /* Soupy Gear Studio geometry and portable file format. No dependencies.
  * Geometry is schematic: radius is a nominal reference pitch radius. Tooth
@@ -1845,6 +1846,13 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
  * The seesaw tilt is the bars' literal pivot angle about their
  * tangential axes, applied to geometry and magnetization together —
  * the same rotation the closed form already handles, nothing rescaled.
+ *
+ * The band bias grades each bar's magnetization across its axial
+ * thickness: a bar is two stacked half-bars, and the bias fades one
+ * half's remanence against the other, so the face the band presents to
+ * one machine is sourced harder than the face it presents to the
+ * other. That is graded sourcing — what each face is fed — not the
+ * tilt's steering, which only re-aims a symmetric source.
  */
 (function (root, factory) {
   'use strict';
@@ -1868,6 +1876,7 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
     statorRadial: 56,     // mm, schematic stator radial width (drawn only)
     statorAxial: 18,      // mm, schematic stator axial thickness (drawn only)
     br: 1.2,              // T, remanence of the bar material
+    bias: 0,              // -1..1: grade the halves' remanence toward the lower (-1) or upper (+1) face; 0 is the uniform bar
     tiltDeg: 0,           // bar pivot angle about the tangential axis
     angleDeg: 0,          // rotor angle of magnet 0
     flipped: []           // indices of magnets flipped against the pattern
@@ -1895,6 +1904,7 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
       statorRadial: num(raw.statorRadial, FIELD_DEFAULTS.statorRadial, 1, 2000),
       statorAxial: num(raw.statorAxial, FIELD_DEFAULTS.statorAxial, 1, 1000),
       br: num(raw.br, FIELD_DEFAULTS.br, 0, 1.4),
+      bias: num(raw.bias, FIELD_DEFAULTS.bias, -1, 1),
       tiltDeg: num(raw.tiltDeg, FIELD_DEFAULTS.tiltDeg, -60, 60),
       angleDeg: Number.isFinite(angle) ? ((angle % 360) + 360) % 360 : 0,
       flipped
@@ -1905,6 +1915,18 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
   // the fill factor. The rest of the arc is the gap between bars.
   function magnetTangential(s) {
     return s.fillFactor * (2 * Math.PI * s.radius) / (2 * s.polePairs);
+  }
+
+  /* The bias as remanence multipliers for a bar's two half-bars,
+   * [upper, lower]. The favoured half always sits at full remanence
+   * and the other fades against it: bias 0 is [1, 1] (the uniform bar
+   * the view shipped with), +1 is [1, 0] (only the upper half-bar is
+   * magnetized), -1 the mirror. Nothing is ever scaled above the
+   * material's Br — a grade can only take magnetization away.
+   */
+  function biasHalves(bias) {
+    const b = num(bias, 0, -1, 1);
+    return [1 - Math.max(0, -b), 1 - Math.max(0, b)];
   }
 
   /* H (A/m) of one uniformly charged rectangle lying in the plane z = zf,
@@ -1961,6 +1983,7 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
     const n = 2 * s.polePairs;
     const tilt = s.tiltDeg * RAD, ct = Math.cos(tilt), st = Math.sin(tilt);
     const flipped = new Set(s.flipped);
+    const [upMult, lowMult] = biasHalves(s.bias);
     const magnets = [];
     for (let k = 0; k < n; k++) {
       const phi = s.angleDeg * RAD + k * (2 * Math.PI / n);
@@ -1974,36 +1997,53 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
           [-sf, cf, 0],                 // body y: tangential
           [st * cf, st * sf, ct]        // body z: axial, tipped by the pivot
         ],
-        sign: (k % 2 === 0 ? 1 : -1) * (flipped.has(k) ? -1 : 1)
+        sign: (k % 2 === 0 ? 1 : -1) * (flipped.has(k) ? -1 : 1),
+        // The bar as two stacked half-bars, offset along its own axis.
+        // The bias lives here, in their remanences — at bias 0 the two
+        // charged faces at the mid-plane cancel and the pair is exactly
+        // the uniform bar.
+        halves: [
+          { dz: s.magnetAxial / 4, br: s.br * upMult },
+          { dz: -s.magnetAxial / 4, br: s.br * lowMult }
+        ]
       });
     }
     return magnets;
   }
 
-  // Total B at a world point, summed over the placed blocks.
+  // Total B at a world point, summed over the placed blocks — each
+  // block contributing its two half-bars at their own remanences.
   function fieldAt(p, raw, magnets) {
     const s = fieldSettings(raw);
     const list = magnets || bandMagnets(s);
-    const half = [s.magnetRadial / 2, magnetTangential(s) / 2, s.magnetAxial / 2];
+    const half = [s.magnetRadial / 2, magnetTangential(s) / 2, s.magnetAxial / 4];
     const B = [0, 0, 0];
     for (const m of list) {
+      const halves = m.halves || [
+        { dz: s.magnetAxial / 4, br: s.br * biasHalves(s.bias)[0] },
+        { dz: -s.magnetAxial / 4, br: s.br * biasHalves(s.bias)[1] }
+      ];
       const dx = p[0] - m.center[0], dy = p[1] - m.center[1], dz = p[2] - m.center[2];
       const local = [
         dx * m.axes[0][0] + dy * m.axes[0][1] + dz * m.axes[0][2],
         dx * m.axes[1][0] + dy * m.axes[1][1] + dz * m.axes[1][2],
         dx * m.axes[2][0] + dy * m.axes[2][1] + dz * m.axes[2][2]
       ];
-      const bl = blockB(local, half, m.sign, s.br);
-      B[0] += m.axes[0][0] * bl[0] + m.axes[1][0] * bl[1] + m.axes[2][0] * bl[2];
-      B[1] += m.axes[0][1] * bl[0] + m.axes[1][1] * bl[1] + m.axes[2][1] * bl[2];
-      B[2] += m.axes[0][2] * bl[0] + m.axes[1][2] * bl[1] + m.axes[2][2] * bl[2];
+      for (const h of halves) {
+        const bl = blockB([local[0], local[1], local[2] - h.dz], half, m.sign, h.br);
+        B[0] += m.axes[0][0] * bl[0] + m.axes[1][0] * bl[1] + m.axes[2][0] * bl[2];
+        B[1] += m.axes[0][1] * bl[0] + m.axes[1][1] * bl[1] + m.axes[2][1] * bl[2];
+        B[2] += m.axes[0][2] * bl[0] + m.axes[1][2] * bl[1] + m.axes[2][2] * bl[2];
+      }
     }
     return B;
   }
 
-  // Is a world point inside any placed block? Tilted bars swing their
-  // corners through the zero-tilt gap planes, so the airgap sample has
-  // to ask — a point inside magnet material is not an airgap point.
+  // Is a world point inside any placed block? The two half-bars tile
+  // the block exactly, biased or not, so the test is against the whole
+  // bar. Tilted bars swing their corners through the zero-tilt gap
+  // planes, so the airgap sample has to ask — a point inside magnet
+  // material is not an airgap point.
   function insideAnyBlock(p, raw, magnets) {
     const s = fieldSettings(raw);
     const list = magnets || bandMagnets(s);
@@ -2037,6 +2077,18 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
       used++;
     }
     return { mean: used ? sum / used : 0, peak, samples: used, inside };
+  }
+
+  // Both gaps at once, with the upper gap's share of the two means —
+  // the number the bias is judged by. A band sourcing nothing (Br 0)
+  // splits evenly by definition.
+  function gapSplit(raw, magnets, count = 120) {
+    const s = fieldSettings(raw);
+    const list = magnets || bandMagnets(s);
+    const upper = sampleAirgap(s, list, 1, count);
+    const lower = sampleAirgap(s, list, -1, count);
+    const total = upper.mean + lower.mean;
+    return { upper, lower, upperShare: total > 0 ? upper.mean / total : 0.5 };
   }
 
   // The section region: wide enough to hold both stator sections and a
@@ -2116,8 +2168,8 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
     return back.concat([[seed[0], seed[1]]], trace(1));
   }
 
-  return { MU0, FIELD_DEFAULTS, fieldSettings, magnetTangential, bandMagnets,
-    blockB, fieldAt, insideAnyBlock, sampleAirgap, sectionRegion, sectionGrid, streamline };
+  return { MU0, FIELD_DEFAULTS, fieldSettings, magnetTangential, biasHalves, bandMagnets,
+    blockB, fieldAt, insideAnyBlock, sampleAirgap, gapSplit, sectionRegion, sectionGrid, streamline };
 });
 </script>
 <script>
@@ -2915,6 +2967,10 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
   function persistField() {
     try { localStorage.setItem(FIELD_STORE, JSON.stringify(fieldState)); } catch (error) { /* a browser copy is best effort */ }
   }
+  function biasLabel(b) {
+    if (!b) return 'balanced';
+    return `${Math.round(Math.abs(b) * 100)}% to the ${b > 0 ? 'upper' : 'lower'}`;
+  }
   const FIELD_STOPS = [[0, '#edf4f8'], [0.18, '#cfe3ee'], [0.38, '#9cc3d4'], [0.55, '#5da9bd'], [0.7, '#087e8b'], [0.85, '#d78a18'], [1, '#b23c17']];
   function fieldColor(t) {
     const x = clamp(t, 0, 1) * (FIELD_STOPS.length - 1);
@@ -2985,9 +3041,13 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
       const wpx = s.magnetRadial * scale, hpx = s.magnetAxial * scale;
       const topPole = m.sign > 0 ? 'N' : 'S', bottomPole = m.sign > 0 ? 'S' : 'N';
       const topColor = m.sign > 0 ? '#c2502a' : '#2e6da4', bottomColor = m.sign > 0 ? '#2e6da4' : '#c2502a';
+      // A biased bar's faded half is drawn faded — the grade is in the
+      // section, not just in a number. At bias 0 both halves are full.
+      const halfOpacity = h => s.br > 0 && h ? (0.3 + 0.7 * (h.br / s.br)).toFixed(2) : '1';
+      const topOp = halfOpacity(m.halves && m.halves[0]), botOp = halfOpacity(m.halves && m.halves[1]);
       return `<g data-magnet="${m.index}" transform="translate(${X(cx).toFixed(1)} ${Y(0).toFixed(1)}) rotate(${rot.toFixed(1)})" role="button" tabindex="0" aria-label="Magnet ${m.index}, ${topPole} pole up. Activate to flip it."><title>Magnet #${m.index} — click to flip</title>`
-        + `<rect x="${(-wpx / 2).toFixed(1)}" y="${(-hpx / 2).toFixed(1)}" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${topColor}"/>`
-        + `<rect x="${(-wpx / 2).toFixed(1)}" y="0" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${bottomColor}"/>`
+        + `<rect x="${(-wpx / 2).toFixed(1)}" y="${(-hpx / 2).toFixed(1)}" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${topColor}" fill-opacity="${topOp}"/>`
+        + `<rect x="${(-wpx / 2).toFixed(1)}" y="0" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${bottomColor}" fill-opacity="${botOp}"/>`
         + `<rect x="${(-wpx / 2).toFixed(1)}" y="${(-hpx / 2).toFixed(1)}" width="${wpx.toFixed(1)}" height="${hpx.toFixed(1)}" fill="none" stroke="#17314a" stroke-width="1.2"/>`
         + `<text y="${(-hpx / 4 + 3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">${topPole}</text>`
         + `<text y="${(hpx / 4 + 3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">${bottomPole}</text></g>`
@@ -3005,6 +3065,8 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
     const fmt = r => `mean ${unit(r.mean, 3)} T · peak ${unit(r.peak, 3)} T`;
     $('field-upper').textContent = fmt(up);
     $('field-lower').textContent = fmt(low);
+    const share = up.mean + low.mean > 0 ? up.mean / (up.mean + low.mean) : 0.5;
+    $('field-split').textContent = `${Math.round(share * 100)}% upper · ${Math.round((1 - share) * 100)}% lower`;
     const excluded = up.inside + low.inside;
     $('field-flip-state').textContent = (s.flipped.length ? `${s.flipped.length} of ${magnets.length} magnets flipped` : 'alternating pattern')
       + (excluded ? ` · ${excluded} gap samples fell inside tilted bars and were skipped` : '');
@@ -3014,6 +3076,8 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
     $('field-br-value').textContent = `${unit(s.br, 2)} T`;
     $('field-tilt').value = String(Math.round(s.tiltDeg));
     $('field-tilt-value').textContent = `${Math.round(s.tiltDeg)}°`;
+    $('field-bias').value = String(s.bias);
+    $('field-bias-value').textContent = biasLabel(s.bias);
     const magSlider = $('field-magnet');
     magSlider.max = String(magnets.length - 1);
     if (Number(magSlider.value) > magnets.length - 1) { magSlider.value = '0'; $('field-magnet-value').textContent = '0'; }
@@ -3076,6 +3140,8 @@ body.stylus-mode .dialog-heading button{width:44px;height:44px;min-height:44px}
   $('field-br').addEventListener('change', () => { persistField(); renderField(); });
   $('field-tilt').addEventListener('input', e => { fieldState.tiltDeg = Number(e.target.value); $('field-tilt-value').textContent = `${Math.round(fieldState.tiltDeg)}°`; renderField('draft'); });
   $('field-tilt').addEventListener('change', () => { persistField(); renderField(); });
+  $('field-bias').addEventListener('input', e => { fieldState.bias = Number(e.target.value); $('field-bias-value').textContent = biasLabel(fieldState.bias); renderField('draft'); });
+  $('field-bias').addEventListener('change', () => { persistField(); renderField(); });
   $('field-magnet').addEventListener('input', e => { $('field-magnet-value').textContent = e.target.value; });
   $('field-flip-one').addEventListener('click', () => flipMagnet(Number($('field-magnet').value)));
 

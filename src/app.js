@@ -792,6 +792,10 @@
   function persistField() {
     try { localStorage.setItem(FIELD_STORE, JSON.stringify(fieldState)); } catch (error) { /* a browser copy is best effort */ }
   }
+  function biasLabel(b) {
+    if (!b) return 'balanced';
+    return `${Math.round(Math.abs(b) * 100)}% to the ${b > 0 ? 'upper' : 'lower'}`;
+  }
   const FIELD_STOPS = [[0, '#edf4f8'], [0.18, '#cfe3ee'], [0.38, '#9cc3d4'], [0.55, '#5da9bd'], [0.7, '#087e8b'], [0.85, '#d78a18'], [1, '#b23c17']];
   function fieldColor(t) {
     const x = clamp(t, 0, 1) * (FIELD_STOPS.length - 1);
@@ -862,9 +866,13 @@
       const wpx = s.magnetRadial * scale, hpx = s.magnetAxial * scale;
       const topPole = m.sign > 0 ? 'N' : 'S', bottomPole = m.sign > 0 ? 'S' : 'N';
       const topColor = m.sign > 0 ? '#c2502a' : '#2e6da4', bottomColor = m.sign > 0 ? '#2e6da4' : '#c2502a';
+      // A biased bar's faded half is drawn faded — the grade is in the
+      // section, not just in a number. At bias 0 both halves are full.
+      const halfOpacity = h => s.br > 0 && h ? (0.3 + 0.7 * (h.br / s.br)).toFixed(2) : '1';
+      const topOp = halfOpacity(m.halves && m.halves[0]), botOp = halfOpacity(m.halves && m.halves[1]);
       return `<g data-magnet="${m.index}" transform="translate(${X(cx).toFixed(1)} ${Y(0).toFixed(1)}) rotate(${rot.toFixed(1)})" role="button" tabindex="0" aria-label="Magnet ${m.index}, ${topPole} pole up. Activate to flip it."><title>Magnet #${m.index} — click to flip</title>`
-        + `<rect x="${(-wpx / 2).toFixed(1)}" y="${(-hpx / 2).toFixed(1)}" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${topColor}"/>`
-        + `<rect x="${(-wpx / 2).toFixed(1)}" y="0" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${bottomColor}"/>`
+        + `<rect x="${(-wpx / 2).toFixed(1)}" y="${(-hpx / 2).toFixed(1)}" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${topColor}" fill-opacity="${topOp}"/>`
+        + `<rect x="${(-wpx / 2).toFixed(1)}" y="0" width="${wpx.toFixed(1)}" height="${(hpx / 2).toFixed(1)}" fill="${bottomColor}" fill-opacity="${botOp}"/>`
         + `<rect x="${(-wpx / 2).toFixed(1)}" y="${(-hpx / 2).toFixed(1)}" width="${wpx.toFixed(1)}" height="${hpx.toFixed(1)}" fill="none" stroke="#17314a" stroke-width="1.2"/>`
         + `<text y="${(-hpx / 4 + 3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">${topPole}</text>`
         + `<text y="${(hpx / 4 + 3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">${bottomPole}</text></g>`
@@ -882,6 +890,8 @@
     const fmt = r => `mean ${unit(r.mean, 3)} T · peak ${unit(r.peak, 3)} T`;
     $('field-upper').textContent = fmt(up);
     $('field-lower').textContent = fmt(low);
+    const share = up.mean + low.mean > 0 ? up.mean / (up.mean + low.mean) : 0.5;
+    $('field-split').textContent = `${Math.round(share * 100)}% upper · ${Math.round((1 - share) * 100)}% lower`;
     const excluded = up.inside + low.inside;
     $('field-flip-state').textContent = (s.flipped.length ? `${s.flipped.length} of ${magnets.length} magnets flipped` : 'alternating pattern')
       + (excluded ? ` · ${excluded} gap samples fell inside tilted bars and were skipped` : '');
@@ -891,6 +901,8 @@
     $('field-br-value').textContent = `${unit(s.br, 2)} T`;
     $('field-tilt').value = String(Math.round(s.tiltDeg));
     $('field-tilt-value').textContent = `${Math.round(s.tiltDeg)}°`;
+    $('field-bias').value = String(s.bias);
+    $('field-bias-value').textContent = biasLabel(s.bias);
     const magSlider = $('field-magnet');
     magSlider.max = String(magnets.length - 1);
     if (Number(magSlider.value) > magnets.length - 1) { magSlider.value = '0'; $('field-magnet-value').textContent = '0'; }
@@ -953,6 +965,8 @@
   $('field-br').addEventListener('change', () => { persistField(); renderField(); });
   $('field-tilt').addEventListener('input', e => { fieldState.tiltDeg = Number(e.target.value); $('field-tilt-value').textContent = `${Math.round(fieldState.tiltDeg)}°`; renderField('draft'); });
   $('field-tilt').addEventListener('change', () => { persistField(); renderField(); });
+  $('field-bias').addEventListener('input', e => { fieldState.bias = Number(e.target.value); $('field-bias-value').textContent = biasLabel(fieldState.bias); renderField('draft'); });
+  $('field-bias').addEventListener('change', () => { persistField(); renderField(); });
   $('field-magnet').addEventListener('input', e => { $('field-magnet-value').textContent = e.target.value; });
   $('field-flip-one').addEventListener('click', () => flipMagnet(Number($('field-magnet').value)));
 

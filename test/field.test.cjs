@@ -140,11 +140,76 @@ module.exports = ({ test, assert }) => {
     assert.equal(F.fieldSettings({ radius: 'x' }).radius, F.FIELD_DEFAULTS.radius);
   });
 
+  test('the bias parameterization hits its three anchors and clamps', () => {
+    assert.deepEqual(F.biasHalves(0), [1, 1], 'zero bias is the uniform bar');
+    assert.deepEqual(F.biasHalves(1), [1, 0], 'full bias keeps the upper half and fades the lower out');
+    assert.deepEqual(F.biasHalves(-1), [0, 1], 'negative bias is the mirror');
+    assert.deepEqual(F.biasHalves(0.5), [1, 0.5], 'the favoured half never exceeds full remanence');
+    assert.deepEqual(F.biasHalves(-0.5), [0.5, 1]);
+    assert.equal(F.fieldSettings({ bias: 7 }).bias, 1, 'bias clamps at +1');
+    assert.equal(F.fieldSettings({ bias: -7 }).bias, -1, 'bias clamps at -1');
+    assert.equal(F.fieldSettings({ br: 1.0, tiltDeg: 5 }).bias, 0, 'a store written before bias existed loads unbiased');
+  });
+
+  test('the two half-bars sum to the whole bar on axis, and each stands alone', () => {
+    const geo = { polePairs: 1, radius: 320, angleDeg: 0 };
+    const s0 = F.fieldSettings(geo);
+    const W = s0.magnetRadial, D = F.magnetTangential(s0), H = s0.magnetAxial, Br = s0.br;
+    const probe = d => [s0.radius, 0, H / 2 + d];
+    const m0 = F.bandMagnets(s0)[0];
+    for (const d of [0.75, 3, 12]) {
+      const B = F.fieldAt(probe(d), s0, [m0]);
+      assert.ok(near(B[2], onAxisBz(d, W, D, H, Br), 1e-9), `bias 0 on axis, d=${d}: ${B[2]}`);
+      assert.ok(near(B[0], 0, 1e-12) && near(B[1], 0, 1e-12), 'no transverse field on the axis at bias 0');
+    }
+    const sUp = F.fieldSettings({ ...geo, bias: 1 });
+    const mUp = F.bandMagnets(sUp)[0];
+    const sLow = F.fieldSettings({ ...geo, bias: -1 });
+    const mLow = F.bandMagnets(sLow)[0];
+    for (const d of [0.75, 3]) {
+      const bUp = F.fieldAt(probe(d), sUp, [mUp]);
+      assert.ok(near(bUp[2], onAxisBz(d, W, D, H / 2, Br), 1e-9), `the upper half alone, d=${d}: ${bUp[2]}`);
+      const bLow = F.fieldAt(probe(d), sLow, [mLow]);
+      assert.ok(near(bLow[2], onAxisBz(d + H / 2, W, D, H / 2, Br), 1e-9), `the lower half alone, read from above, d=${d}: ${bLow[2]}`);
+    }
+  });
+
+  test('bias zero reproduces the shipped symmetric baseline', () => {
+    const s = F.fieldSettings({ bias: 0 });
+    const split = F.gapSplit(s, F.bandMagnets(s));
+    assert.ok(near(split.upper.mean, split.lower.mean, 1e-9), 'the two means agree at bias 0');
+    assert.ok(near(split.upper.peak, split.lower.peak, 1e-9), 'the two peaks agree at bias 0');
+    assert.ok(near(split.upperShare, 0.5, 1e-9), 'the split is even at bias 0');
+    // The numbers the view shipped with, before the band was graded:
+    // the restructure must not have moved them.
+    assert.ok(near(split.upper.mean, 0.289255, 1e-6), 'the baseline mean is unchanged');
+    assert.ok(near(split.upper.peak, 0.344934, 1e-6), 'the baseline peak is unchanged');
+  });
+
+  test('the split moves monotonically with bias, mirrors about zero, and is no tilt-sized effect', () => {
+    const shares = [-1, -0.5, 0, 0.5, 1].map(b => {
+      const s = F.fieldSettings({ bias: b });
+      return F.gapSplit(s, F.bandMagnets(s)).upperShare;
+    });
+    for (let i = 1; i < shares.length; i++) {
+      assert.ok(shares[i] > shares[i - 1], `the share rises with bias: ${shares.map(v => v.toFixed(4)).join(' < ')}`);
+    }
+    assert.ok(near(shares[0] + shares[4], 1, 1e-6), 'share(-1) + share(+1) = 1');
+    assert.ok(near(shares[1] + shares[3], 1, 1e-6), 'share(-0.5) + share(+0.5) = 1');
+    // Full bias moves the upper share past 53% — an order of magnitude
+    // beyond the 20-degree tilt's 50.15%, which the model showed is a
+    // re-aiming, not a split.
+    assert.ok(shares[4] > 0.53, `full bias is a material split: ${(shares[4] * 100).toFixed(1)}% upper`);
+    assert.ok(shares[0] < 0.47, `full negative bias mirrors it: ${(shares[0] * 100).toFixed(1)}% upper`);
+  });
+
   test('the field view is present in the built file', () => {
     const fs = require('fs'), path = require('path');
     const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
     assert.ok(html.includes('id="stagefield"'), 'the section stage is in the built file');
     assert.ok(html.includes('data-view-mode="field"'), 'the Field view button is in the built file');
+    assert.ok(html.includes('id="field-bias"'), 'the bias slider is in the built file');
+    assert.ok(html.includes('id="field-split"'), 'the split readout is in the built file');
     assert.ok(html.includes('soupy-gear-studio-field-v1'), 'the field state has its own store key');
     assert.ok(html.includes('no iron, no saturation, no eddy currents'), 'the honest label travels with the view');
   });
