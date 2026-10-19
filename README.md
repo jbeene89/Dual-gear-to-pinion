@@ -67,6 +67,20 @@ current is total power over bus voltage; it is not a machine phase current.
 The duty point is stored separately from the design, so version 1 JSON files
 are unchanged and still load everywhere.
 
+**Transmission and flux (Addendum 2).** Below the power table the panel
+models the design plan's transmission layer, as parameters rather than
+geometry: each plate's station — its face, or internal teeth inside its rim,
+with the rim count following from a rim radius and module you set — the
+selector pinion's slide state, which sets preload only and never a ratio,
+and the ring senses each station pairing implies, with any pairing that
+would land the rings turning the same way flagged illegal. A seesaw tilt
+steers the shared magnet band's flux between the two machines on a cosine
+law, through three detents — flat to the lower machine, the W split, flat
+to the upper — and a check beside it asks whether the W's repeat count
+divides both machines' pole-pair counts, the condition for the zigzag to
+act as a harmonic notch. These settings are stored separately from the
+design, like the duty point.
+
 **What a pass means.** Only that the drawing is internally consistent. Tooth
 profile and the right-angle form these faces would need, contact stress,
 backlash, bearing loads, thermal limits, machine envelopes, and electrical

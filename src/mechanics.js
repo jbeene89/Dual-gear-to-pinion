@@ -458,6 +458,159 @@
     };
   }
 
+  /* ---- Addendum 2: stations, selector slide, shared-band flux ---------
+   * The transmission layer of the design plan, modelled at the same
+   * first-order level as the mesh checks above. Everything here is a
+   * parameter, not a fact about hardware: rim tooth counts follow from a
+   * chosen rim pitch radius and module, the pole-pair counts default to
+   * the plan's drawn 15:4 solution, and the flux law is the plan's cosine
+   * approximation. Nothing here changes the v1 mesh, motion, or power
+   * results; it reads them.
+   */
+
+  const ADD2_DEFAULTS = Object.freeze({
+    stationUpper: 'face',     // 'face' | 'rim', per plate
+    stationLower: 'face',
+    slide: 'neutral',         // 'squeezed' | 'neutral' | 'relaxed'
+    tilt: 0,                  // seesaw tilt, -1..1 (see fluxShares)
+    designSplit: 0.5,         // upper machine's flux share at tilt 0
+    zigzagRepeats: 60,        // W repeats around the shared band
+    polePairsUpper: 15,       // drawn 15:4 solution (plan section 4)
+    polePairsLower: 4,
+    rimModule: 5,             // tooth size assumed for the rim stations
+    rimRadiusUpper: 320,      // rim pitch radii, from the drawn cap sizes
+    rimRadiusLower: 270
+  });
+
+  function add2Settings(raw = {}) {
+    const station = v => (v === 'rim' ? 'rim' : 'face');
+    return {
+      stationUpper: station(raw.stationUpper),
+      stationLower: station(raw.stationLower),
+      slide: ['squeezed', 'neutral', 'relaxed'].includes(raw.slide) ? raw.slide : ADD2_DEFAULTS.slide,
+      tilt: num(raw.tilt, ADD2_DEFAULTS.tilt, -1, 1),
+      designSplit: num(raw.designSplit, ADD2_DEFAULTS.designSplit, 0, 1),
+      zigzagRepeats: Math.round(num(raw.zigzagRepeats, ADD2_DEFAULTS.zigzagRepeats, 1, 100000)),
+      polePairsUpper: Math.round(num(raw.polePairsUpper, ADD2_DEFAULTS.polePairsUpper, 1, 10000)),
+      polePairsLower: Math.round(num(raw.polePairsLower, ADD2_DEFAULTS.polePairsLower, 1, 10000)),
+      rimModule: num(raw.rimModule, ADD2_DEFAULTS.rimModule, 0.1, 1000),
+      rimRadiusUpper: num(raw.rimRadiusUpper, ADD2_DEFAULTS.rimRadiusUpper, 1, 1000000),
+      rimRadiusLower: num(raw.rimRadiusLower, ADD2_DEFAULTS.rimRadiusLower, 1, 1000000)
+    };
+  }
+
+  // Internal rim teeth follow the same count law as every other member:
+  // Z = pitch circumference / tooth size = 2R / module.
+  function rimTeeth(rimRadius, rimModule) {
+    return Math.max(6, Math.round(2 * num(rimRadius, ADD2_DEFAULTS.rimRadiusUpper, 1) / num(rimModule, ADD2_DEFAULTS.rimModule, 0.1)));
+  }
+
+  /* The sign rule (plan Addendum 2, section B). A face mesh reverses the
+   * driven plate's sense relative to the pinion; an internal (rim) mesh
+   * does not. A plate's facing flips the contribution again: in the
+   * canonical layout the upper plate's teeth face DOWN and the lower
+   * plate's face UP. Anchor, matching the verified v1 kinematics: with a
+   * CW pinion and both plates on their face stations, the upper ring runs
+   * CW and the lower CCW — the rings counter-rotate. Any station pairing
+   * that lands both rings on the same sense is illegal, because the
+   * machine's counter-rotation is the point of it.
+   */
+  const MESH_SENSE = { face: -1, rim: 1 };     // reversal across the mesh
+  const FACING_SENSE = { down: -1, up: 1 };   // the plate's own orientation
+
+  function checkStations(stationUpper, stationLower, opts = {}) {
+    const upper = stationUpper === 'rim' ? 'rim' : 'face';
+    const lower = stationLower === 'rim' ? 'rim' : 'face';
+    const pinion = dirSign(opts.pinionDirection) || -1;
+    const upperSign = pinion * MESH_SENSE[upper] * FACING_SENSE.down;
+    const lowerSign = pinion * MESH_SENSE[lower] * FACING_SENSE.up;
+    const counterRotating = upperSign !== lowerSign;
+    return {
+      pinionDirection: signName(pinion),
+      upper: { station: upper, facing: 'down', sense: signName(upperSign) },
+      lower: { station: lower, facing: 'up', sense: signName(lowerSign) },
+      counterRotating,
+      legal: counterRotating
+    };
+  }
+
+  // The selector slide wedges both pinion sections against both plates at
+  // once. It sets preload only; ratios belong to the tooth counts.
+  function slidePreload(slide) {
+    if (slide === 'squeezed') return { slide, preload: 'zero-lash', label: 'Zero lash — both flanks loaded' };
+    if (slide === 'relaxed') return { slide, preload: 'open', label: 'Lash open — engagement fading' };
+    return { slide: 'neutral', preload: 'nominal', label: 'Nominal lash' };
+  }
+
+  /* Flux share of the shared magnet band. The plan's law is a cosine
+   * family anchored at three points the inventor chose: tilt -1 gives
+   * the whole band to the lower machine, tilt +1 to the upper, and tilt 0
+   * gives the design split. Because the share runs on a cosine, the last
+   * stretch of tilt does most of the switching — detents are placed by
+   * flux, not by equal angles.
+   */
+  function fluxShares(tilt, designSplit) {
+    const t = num(tilt, 0, -1, 1), split = num(designSplit, 0.5, 0, 1);
+    const k = Math.sin(t * Math.PI / 2);
+    const upper = k >= 0 ? split + (1 - split) * k : split * (1 + k);
+    return { upper, lower: 1 - upper };
+  }
+
+  function tiltDetent(tilt) {
+    const t = num(tilt, 0, -1, 1);
+    if (t <= -1) return 'flat — lower only';
+    if (t >= 1) return 'flat — upper only';
+    if (t === 0) return 'W — split';
+    return 'between detents';
+  }
+
+  // The W is a harmonic notch only if its zigzag repeats land on both
+  // machines' phase patterns: the repeat count must divide by each
+  // machine's pole pairs. Both machines share one electrical frequency
+  // (plan section 4), so one repeat count serves both — or fails both.
+  function wPhasing(repeats, polePairsUpper, polePairsLower) {
+    const r = Math.round(num(repeats, ADD2_DEFAULTS.zigzagRepeats, 0));
+    const pu = Math.round(num(polePairsUpper, ADD2_DEFAULTS.polePairsUpper, 1));
+    const pl = Math.round(num(polePairsLower, ADD2_DEFAULTS.polePairsLower, 1));
+    const upperOk = r % pu === 0, lowerOk = r % pl === 0;
+    return { repeats: r, polePairsUpper: pu, polePairsLower: pl, upperOk, lowerOk, ok: upperOk && lowerOk };
+  }
+
+  function transmission(design, report, raw = {}) {
+    const s = add2Settings(raw);
+    const live = ((report && report.meshes) || []).filter(m => !m.unmeshed);
+    // A plate's role follows which pinion face it meets: the plate above
+    // the pinion (pinion-top) is the upper ring, the one below is lower.
+    // Other layouts fall back to mesh order.
+    const plates = live.map((m, i) => {
+      const role = m.face === 'pinion-top' ? 'upper' : m.face === 'pinion-bottom' ? 'lower' : i === 0 ? 'upper' : i === 1 ? 'lower' : 'extra';
+      const station = role === 'upper' ? s.stationUpper : role === 'lower' ? s.stationLower : 'face';
+      const zRim = rimTeeth(role === 'upper' ? s.rimRadiusUpper : s.rimRadiusLower, s.rimModule);
+      // The crossed pairing is the v1 layout's: the big (upper) plate
+      // engages the pinion's small section, the smaller (lower) plate the
+      // large section. The mesh report already carries that pairing, so
+      // the rim ratio divides by the teeth of the section in this mesh.
+      const ratioFace = m.ratioTeeth;
+      const ratioRim = m.pinionTeeth > 0 ? zRim / m.pinionTeeth : 0;
+      return {
+        meshKey: m.key, wheelId: m.wheelId, name: m.wheelName, role,
+        sectionKind: m.sectionKind, pinionTeeth: m.pinionTeeth, wheelTeeth: m.wheelTeethNow,
+        station, rimTeeth: zRim, ratioFace, ratioRim,
+        ratio: station === 'rim' ? ratioRim : ratioFace
+      };
+    });
+    const shaft = design ? pinions(design)[0] : null;
+    const shares = fluxShares(s.tilt, s.designSplit);
+    return {
+      settings: s,
+      plates,
+      slide: slidePreload(s.slide),
+      signs: checkStations(s.stationUpper, s.stationLower, { pinionDirection: shaft ? shaft.direction : 'cw' }),
+      flux: { tilt: s.tilt, detent: tiltDetent(s.tilt), upper: shares.upper, lower: shares.lower },
+      wPhasing: wPhasing(s.zigzagRepeats, s.polePairsUpper, s.polePairsLower)
+    };
+  }
+
   /* ---- public entry point --------------------------------------------- */
 
   function settings(raw = {}) {
@@ -590,6 +743,7 @@
     return fix.build(design, report);
   }
 
-  return { DEFAULTS, FIXES, analyze, settings, patchesFor, findMeshes, kinematics, power,
+  return { DEFAULTS, ADD2_DEFAULTS, FIXES, analyze, settings, add2Settings, transmission, checkStations,
+    fluxShares, tiltDetent, wPhasing, rimTeeth, slidePreload, patchesFor, findMeshes, kinematics, power,
     wheels, pinions, axisFromAngles, meshKind, gcd, fixed, percent, settle };
 });

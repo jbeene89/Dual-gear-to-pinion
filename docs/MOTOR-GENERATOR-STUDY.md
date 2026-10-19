@@ -79,3 +79,19 @@ The editor now computes this chain from the drawn geometry. Entering the same du
 **What that pass reveals about the rings.** Because the two branch ratios differ (10.67 and 2.844), one shaft speed produces two very different ring speeds. At 300 rpm on the shaft the upper ring turns 28.1 rpm and the lower 105.5 rpm. Splitting shaft torque evenly, the upper machine must resist about 512 N·m and the lower about 137 N·m for the same 1.5 kW each. A machine delivering useful torque at 28 rpm is a very different proposition from one at 105 rpm, and the required torques differ by nearly 4:1. This is the winding and voltage question the ratios were blocking, now stated in numbers.
 
 The next sizing pass should choose a useful shaft speed/torque range, settle the right-angle tooth form, then compare continuous machine envelopes and cooling against the per-ring torques and speeds above. Machine selection and power predictions remain open.
+
+
+---
+
+## Addendum 2 operating modes (appended 2026-10-18)
+
+The editor's Transmission & flux panel models the plan's selector pinion, face/rim station pairings, and shared magnet band as parameters. The four modes below are states of that model — named so the panel, this study, and the plan use the same words — not states of built hardware.
+
+| Mode | Selector and disconnect state | Load path |
+|---|---|---|
+| Both-home launch | Both plates home; both magnet bands fully coupled; pinion slide squeezed to zero lash | The big ring leads as the torque machine; the small ring follows at its treaty ratio. Full counter-rotation, so the vehicle feels no net reaction. |
+| Parked cruise (6A) | The off-duty machine's magnet ring is slid out of stator alignment (magnet slide, Option Set 6A). Its gear mesh never opens | The suited machine carries the cruise load alone. The parked machine costs only bearing and windage drag; re-engagement is instant and phase-true because the mesh, and with it the phase treaty, never broke. |
+| Generation | Same rotation senses, power flow reversed; both machines home, flux share set by the seesaw tilt | The prop or shaft drives both rings as generators. Draw is state-of-charge managed: full draw when the battery is hungry, tapered to nothing as it fills, so a charged ship is not held back by its own generators. |
+| Fault-isolated (6B) | A failed machine's plate is slid axially off the pinion (plate-out, Option Set 6B) — the only true mechanical removal | The surviving machine runs the drive alone and the vehicle accepts its full reaction torque until repair. Return is a synchro-slide: the parked machine's controller first spins it to exact mesh speed, then the plate slides home. |
+
+**Parking rule.** Parking is decided by losses, not by torque. Park the machine whose present-tense losses — cogging, iron, and windage at its current speed — exceed the reaction cost of losing its counter-rotation. Both plates stay home at launch, where torque and reaction are at their largest and speeds (so losses) are low; parking is a fast-cruise decision. Single-mesh running in any parked mode loads the pinion from one side only, and the pinion support must be sized for that one-sided load.

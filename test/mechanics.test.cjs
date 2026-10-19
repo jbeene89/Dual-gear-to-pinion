@@ -263,4 +263,96 @@ module.exports = ({ test, assert }) => {
     assert.equal(note.severity, 'note', 'advisory only; it does not block');
     assert.equal(M.gcd(127, 12), 1);
   });
+
+  test('face stations on both plates keep the rings counter-rotating, as drawn', () => {
+    const s = M.checkStations('face', 'face');
+    assert.equal(s.upper.sense, 'cw', 'the v1 baseline: upper CW with a CW pinion');
+    assert.equal(s.lower.sense, 'ccw', 'the v1 baseline: lower CCW');
+    assert.equal(s.counterRotating, true);
+    assert.equal(s.legal, true);
+  });
+
+  test('moving both plates to their rim stations flips both senses and stays legal', () => {
+    const s = M.checkStations('rim', 'rim');
+    assert.equal(s.upper.sense, 'ccw', 'an internal mesh does not reverse, so the upper ring flips');
+    assert.equal(s.lower.sense, 'cw');
+    assert.equal(s.counterRotating, true, 'both flipped, still opposed');
+    assert.equal(s.legal, true);
+  });
+
+  test('a mixed station pairing lands the rings co-rotating and is illegal', () => {
+    for (const [u, l] of [['face', 'rim'], ['rim', 'face']]) {
+      const s = M.checkStations(u, l);
+      assert.equal(s.counterRotating, false, u + '/' + l + ' co-rotates');
+      assert.equal(s.legal, false, u + '/' + l + ' breaks counter-rotation');
+      assert.equal(s.upper.sense, s.lower.sense);
+    }
+  });
+
+  test('rim tooth counts follow the count law at the drawn rim sizes', () => {
+    assert.equal(M.rimTeeth(320, 5), 128, '2 x 320 / 5');
+    assert.equal(M.rimTeeth(270, 5), 108, '2 x 270 / 5');
+    assert.equal(M.rimTeeth(256, 5), 102, 'a non-integer count rounds to the nearest whole tooth');
+  });
+
+  test('the rim station divides the rim count by the crossed pinion section', () => {
+    const d = C.starterMotorDrive();
+    const t = M.transmission(d, M.analyze(d, {}), {});
+    const upper = t.plates.find(p => p.role === 'upper'), lower = t.plates.find(p => p.role === 'lower');
+    assert.ok(near(upper.ratioFace, 8), 'face: 96/12, as in v1');
+    assert.ok(near(upper.ratioRim, 128 / 12), 'rim: 128 rim teeth over the small section');
+    assert.ok(near(lower.ratioFace, 2), 'face: 72/36');
+    assert.ok(near(lower.ratioRim, 3), 'rim: 108 over the large section');
+    assert.equal(t.signs.legal, true, 'the drawn face/face pairing is legal');
+    const shifted = M.transmission(d, M.analyze(d, {}), { stationUpper: 'rim' });
+    const shiftedUpper = shifted.plates.find(p => p.role === 'upper');
+    assert.equal(shiftedUpper.station, 'rim');
+    assert.ok(near(shiftedUpper.ratio, 128 / 12), 'the active ratio follows the chosen station');
+    assert.equal(shifted.signs.legal, false, 'and the mixed pairing is flagged illegal');
+  });
+
+  test('the pinion slide sets preload only and never touches a ratio', () => {
+    const d = C.starterMotorDrive();
+    const report = M.analyze(d, {});
+    const squeezed = M.transmission(d, report, { slide: 'squeezed' });
+    const relaxed = M.transmission(d, report, { slide: 'relaxed' });
+    assert.equal(squeezed.slide.preload, 'zero-lash');
+    assert.equal(relaxed.slide.preload, 'open');
+    assert.equal(M.transmission(d, report, {}).slide.preload, 'nominal');
+    for (let i = 0; i < squeezed.plates.length; i++) {
+      assert.ok(near(squeezed.plates[i].ratio, relaxed.plates[i].ratio), 'ratios belong to the tooth counts');
+    }
+  });
+
+  test('flux share gives the whole band to one machine at each tilt stop', () => {
+    const low = M.fluxShares(-1, 0.5), mid = M.fluxShares(0, 0.5), high = M.fluxShares(1, 0.5);
+    assert.ok(near(low.upper, 0) && near(low.lower, 1), 'tilt -1: flat, lower only');
+    assert.ok(near(mid.upper, 0.5) && near(mid.lower, 0.5), 'tilt 0: the design split');
+    assert.ok(near(high.upper, 1) && near(high.lower, 0), 'tilt +1: flat, upper only');
+    assert.ok(near(M.fluxShares(0, 0.6).upper, 0.6), 'the midpoint is the design split, whatever it is');
+    assert.ok(M.fluxShares(0.5, 0.5).upper > 0.8, 'the cosine law does most of its switching late');
+    assert.equal(M.tiltDetent(-1), 'flat — lower only');
+    assert.equal(M.tiltDetent(0), 'W — split');
+    assert.equal(M.tiltDetent(1), 'flat — upper only');
+    assert.equal(M.tiltDetent(0.4), 'between detents');
+  });
+
+  test('the W notches both machines only when its repeats divide both pole-pair counts', () => {
+    const ok = M.wPhasing(60, 15, 4);
+    assert.equal(ok.ok, true, '60 = 4 x 15 = 15 x 4');
+    assert.equal(M.wPhasing(58, 15, 4).upperOk, false, '58 misses the upper pattern');
+    const lowerMiss = M.wPhasing(45, 15, 4);
+    assert.equal(lowerMiss.upperOk, true, '45 = 3 x 15');
+    assert.equal(lowerMiss.lowerOk, false, '45 misses the lower pattern');
+    assert.equal(lowerMiss.ok, false, 'one missed pattern loses the notch');
+  });
+
+  test('addendum settings clamp and fall back like the duty settings', () => {
+    const s = M.add2Settings({ tilt: 7, stationUpper: 'bogus', designSplit: -1, slide: 'bogus', rimModule: 'x' });
+    assert.equal(s.tilt, 1);
+    assert.equal(s.stationUpper, 'face');
+    assert.equal(s.designSplit, 0);
+    assert.equal(s.slide, 'neutral');
+    assert.equal(s.rimModule, M.ADD2_DEFAULTS.rimModule);
+  });
 };

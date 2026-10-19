@@ -12,12 +12,18 @@
   // design itself, so they live beside the file rather than inside it and the
   // version 1 format is unchanged.
   const DUTY_STORE = 'soupy-gear-studio-duty-v1';
+  // Addendum 2 transmission and flux parameters sit beside the duty
+  // settings under their own key, for the same reason: they describe how
+  // the modelled transmission is set, not the design file.
+  const ADD2_STORE = 'soupy-gear-studio-add2-v1';
   let design = C.starterMotorDrive(), selectedId = null, tool = 'select', viewMode = '3d';
   let past = [], future = [], gesture = null, space = false;
   let view = {x:0, y:0, zoom:1}, playing = false, playStart = 0, frame = 0;
   let saveTimer, toastTimer, resizeTimer, storageAvailable = true;
   let duty = Object.assign({}, M.DEFAULTS);
   try { const raw = localStorage.getItem(DUTY_STORE); if (raw) duty = M.settings(JSON.parse(raw)); } catch (error) { duty = Object.assign({}, M.DEFAULTS); }
+  let add2 = Object.assign({}, M.ADD2_DEFAULTS);
+  try { const raw = localStorage.getItem(ADD2_STORE); if (raw) add2 = M.add2Settings(JSON.parse(raw)); } catch (error) { add2 = Object.assign({}, M.ADD2_DEFAULTS); }
   const pointers = new Map();
   let recoveryMessage = '';
   try {
@@ -160,6 +166,13 @@
   function dutyField(key, label, value, extra, hint) {
     return `<label class="duty-field">${escape(label)}<input data-duty="${key}" type="number" value="${escape(value)}" ${extra || ''} aria-label="${escape(label)}">${hint ? `<small>${escape(hint)}</small>` : ''}</label>`;
   }
+  function add2Field(key, label, value, extra, hint) {
+    return `<label class="duty-field">${escape(label)}<input data-add2="${key}" type="number" value="${escape(value)}" ${extra || ''} aria-label="${escape(label)}">${hint ? `<small>${escape(hint)}</small>` : ''}</label>`;
+  }
+  function add2Select(key, label, value, options) {
+    return `<label class="duty-field">${escape(label)}<select data-add2="${key}" aria-label="${escape(label)}">`
+      + options.map(([v, text]) => `<option value="${escape(v)}" ${v === value ? 'selected' : ''}>${escape(text)}</option>`).join('') + '</select></label>';
+  }
   function renderAnalysis() {
     const report = M.analyze(design, duty);
     const badge = $('analysis-badge');
@@ -252,6 +265,44 @@
       html += '</tbody></table>';
       html += `<p class="field-hint">Shaft-to-bus efficiency ${M.fixed(p.overall * 100, 1)}% at ${unit(duty.busVoltage, 0, ' V')}. Bus current is total power over bus voltage, not a machine phase current.</p>`;
     }
+
+    const t2 = M.transmission(design, report, add2);
+    html += '<h3>Transmission & flux — Addendum 2</h3>';
+    html += '<div class="duty-grid">'
+      + add2Select('stationUpper', 'Upper station', t2.settings.stationUpper, [['face', 'Face'], ['rim', 'Rim (internal)']])
+      + add2Select('stationLower', 'Lower station', t2.settings.stationLower, [['face', 'Face'], ['rim', 'Rim (internal)']])
+      + add2Select('slide', 'Pinion slide', t2.settings.slide, [['squeezed', 'Squeezed'], ['neutral', 'Neutral'], ['relaxed', 'Relaxed']])
+      + add2Field('designSplit', 'Split to upper', t2.settings.designSplit, 'min="0" max="1" step="0.05"', 'upper share at tilt 0')
+      + add2Field('zigzagRepeats', 'W repeats', t2.settings.zigzagRepeats, 'min="1" step="1"')
+      + add2Field('rimModule', 'Rim module', t2.settings.rimModule, 'min="0.1" step="0.5"')
+      + add2Field('rimRadiusUpper', 'Upper rim radius', t2.settings.rimRadiusUpper, 'min="1" step="1"')
+      + add2Field('rimRadiusLower', 'Lower rim radius', t2.settings.rimRadiusLower, 'min="1" step="1"')
+      + add2Field('polePairsUpper', 'Upper pole pairs', t2.settings.polePairsUpper, 'min="1" step="1"')
+      + add2Field('polePairsLower', 'Lower pole pairs', t2.settings.polePairsLower, 'min="1" step="1"')
+      + '</div>';
+    html += `<label class="duty-field">Seesaw tilt<input data-add2-tilt type="range" min="-1" max="1" step="0.05" value="${escape(t2.settings.tilt)}" aria-label="Seesaw tilt"><small>−1 flat to the lower machine · 0 the W split · +1 flat to the upper</small></label>`;
+    if (!t2.plates.length) html += '<p class="analysis-empty">No mesh, so no stations to model.</p>';
+    else {
+      html += '<table class="mesh-table"><tbody>';
+      for (const p of t2.plates) {
+        html += `<tr><th>${escape(p.name)}</th><td>${p.station === 'rim' ? 'rim' : 'face'}</td>`
+          + `<td>face 1:${unit(p.ratioFace, 2)}</td><td>rim 1:${unit(p.ratioRim, 2)} <small>${p.rimTeeth}T</small></td>`
+          + `<td class="ratio">now 1:${unit(p.ratio, 2)}</td></tr>`;
+      }
+      html += '</tbody></table>';
+    }
+    html += `<p class="check note">Pinion slide: ${escape(t2.slide.label.toLowerCase())}. The slide sets preload only; ratios follow the tooth counts.</p>`;
+    const sg = t2.signs;
+    if (sg.legal) html += `<p class="check ok">Upper ${escape(dirGlyph(sg.upper.sense))}, lower ${escape(dirGlyph(sg.lower.sense))} — the rings counter-rotate. Pairing legal.</p>`;
+    else html += `<p class="check miss">Upper ${escape(dirGlyph(sg.upper.sense))}, lower ${escape(dirGlyph(sg.lower.sense))} — both rings turn the same way. This station pairing breaks counter-rotation and is illegal.</p>`;
+    html += `<p class="mesh-sub">Shared-band flux — upper <span class="add2-flux-upper">${unit(t2.flux.upper * 100, 0, '%')}</span> · lower <span class="add2-flux-lower">${unit(t2.flux.lower * 100, 0, '%')}</span> · <span class="add2-detent">${escape(t2.flux.detent)}</span></p>`;
+    const w = t2.wPhasing;
+    if (w.ok) html += `<p class="check ok">${w.repeats} W repeats divide by both pole-pair counts (${w.polePairsUpper} and ${w.polePairsLower}), so the zigzag lands on both phase patterns.</p>`;
+    else {
+      const misses = [!w.upperOk ? 'upper (' + w.polePairsUpper + ')' : null, !w.lowerOk ? 'lower (' + w.polePairsLower + ')' : null].filter(Boolean).join(' and ');
+      html += `<p class="check warn">${w.repeats} W repeats do not divide by the ${misses} pole-pair count, so the zigzag misses that phase pattern and the harmonic notch is lost.</p>`;
+    }
+    html += '<p class="field-hint">Stations, rim counts, and flux shares are parameters at the plan\'s scale, not checked geometry.</p>';
 
     html += '<p class="analysis-limits">Checked here: equal module, centre distance or face contact, tooth-count consistency, gross interference, speed and direction, and a loss-chain power estimate. Not checked: tooth profile and the right-angle form these faces would need, contact stress, backlash, undercut, bending and bearing loads, lubrication, thermal limits, machine envelopes, and electrical behaviour. Passing every check here does not make the mechanism buildable.</p>';
     $('analysis').innerHTML = html;
@@ -474,6 +525,30 @@
     renderAnalysis();
   });
   $('analysis').addEventListener('click',e=>{const b=e.target.closest('[data-fix]'); if(b) applyFix(b.dataset.fix);});
+  $('analysis').addEventListener('change',e=>{
+    const input=e.target.closest('[data-add2],[data-add2-tilt]'); if(!input) return;
+    const key=input.dataset.add2||'tilt';
+    let value;
+    if(input.tagName==='SELECT') value=input.value;
+    else {
+      value=Number(input.value);
+      if(input.value.trim()===''||!Number.isFinite(value)) { toast('Enter a valid number.'); renderAnalysis(); return; }
+    }
+    add2=M.add2Settings(Object.assign({},add2,{[key]:value}));
+    try { localStorage.setItem(ADD2_STORE,JSON.stringify(add2)); } catch (error) { /* a browser copy is best effort */ }
+    renderAnalysis();
+  });
+  // The tilt slider reports continuously; patch the flux readout in place
+  // rather than rebuilding the panel under the user's thumb.
+  $('analysis').addEventListener('input',e=>{
+    const input=e.target.closest('[data-add2-tilt]'); if(!input) return;
+    add2=M.add2Settings(Object.assign({},add2,{tilt:Number(input.value)}));
+    const shares=M.fluxShares(add2.tilt,add2.designSplit);
+    const up=document.querySelector('.add2-flux-upper'), low=document.querySelector('.add2-flux-lower'), det=document.querySelector('.add2-detent');
+    if(up) up.textContent=unit(shares.upper*100,0,'%');
+    if(low) low.textContent=unit(shares.lower*100,0,'%');
+    if(det) det.textContent=M.tiltDetent(add2.tilt);
+  });
   function segmentDistance(p,a,b) {
     const dx=b[0]-a[0],dy=b[1]-a[1];
     const t=clamp(((p.x-a[0])*dx+(p.y-a[1])*dy)/(dx*dx+dy*dy||1),0,1);
